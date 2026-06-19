@@ -639,44 +639,56 @@ export default function Home() {
               ))}
             </div>
           ) : events.filter(e => e.isVotingEnabled).length === 0 ? (
+          <div style={{
+            background: "rgba(255,255,255,0.6)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "20px",
+            border: "1.5px solid rgba(255,255,255,0.8)",
+            boxShadow: "0 8px 32px rgba(31,38,135,0.04)",
+            padding: "48px 32px",
+            textAlign: "center",
+            position: "relative",
+            zIndex: 1,
+          }}>
+            {/* Icon */}
             <div style={{
-              background: "linear-gradient(135deg, #1e0a3c 0%, #2c1056 100%)",
-              borderRadius: "24px",
-              padding: "48px 32px",
-              textAlign: "center",
-              position: "relative",
-              zIndex: 1,
-              overflow: "hidden",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              boxShadow: "0 12px 40px rgba(30, 10, 60, 0.15)"
+              width: "64px", height: "64px", borderRadius: "18px",
+              background: "linear-gradient(135deg, #fff5f2 0%, #fff 100%)",
+              border: "1.5px solid rgba(240,85,55,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 20px",
+              boxShadow: "0 4px 12px rgba(240,85,55,0.08)"
             }}>
-              {/* Background ambient light */}
-              <div style={{ position: "absolute", top: "-50%", right: "-10%", width: "250px", height: "250px", borderRadius: "50%", background: "rgba(240, 85, 55, 0.12)", filter: "blur(60px)", pointerEvents: "none" }} />
-              <div style={{ position: "absolute", bottom: "-50%", left: "-10%", width: "250px", height: "250px", borderRadius: "50%", background: "rgba(99, 102, 241, 0.08)", filter: "blur(60px)", pointerEvents: "none" }} />
-              
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "1.6rem" }}>
-                  🗳️
-                </div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#ffffff", marginBottom: "8px", margin: 0 }}>
-                  No Active Campaigns
-                </h3>
-                <p style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.65)", marginBottom: "20px", maxWidth: "340px", margin: "12px auto 20px", lineHeight: 1.6 }}>
-                  Hosting an SUG election, department awards, or pageantry on campus? Create an active voting lobby instantly.
-                </p>
-                <Link href="/organizer/voting" style={{
-                  display: "inline-flex", alignItems: "center", gap: "6px", height: "40px",
-                  padding: "0 20px", borderRadius: "100px", textDecoration: "none",
-                  background: "#f05537", color: "#ffffff",
-                  fontWeight: 800, fontSize: "0.82rem", transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#d1410c"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#f05537"; e.currentTarget.style.transform = "translateY(0)"; }}
-                >
-                  Setup Voting Campaign
-                </Link>
-              </div>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 12l2 2 4-4" />
+                <path d="M21 12c0 1.2-.504 2.303-1.313 3.098M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0" />
+              </svg>
             </div>
+
+            <h3 style={{ fontSize: "1.15rem", fontWeight: 900, color: "#111827", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+              No Active Campaigns
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "#6B7280", maxWidth: "340px", margin: "0 auto 24px", lineHeight: 1.65 }}>
+              Hosting an SUG election, department awards, or pageantry on campus? Create an active voting lobby instantly.
+            </p>
+
+            <Link href="/organizer/voting" style={{
+              display: "inline-flex", alignItems: "center", gap: "8px",
+              height: "44px", padding: "0 24px", borderRadius: "100px",
+              textDecoration: "none",
+              background: "#f05537", color: "#ffffff",
+              fontWeight: 800, fontSize: "0.875rem",
+              boxShadow: "0 4px 14px rgba(240,85,55,0.25)",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#d1410c"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#f05537"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Setup Voting Campaign
+            </Link>
+          </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 380px), 1fr))", gap: "20px", position: "relative", zIndex: 1 }}>
               {events.filter(e => e.isVotingEnabled).map((event) => {
@@ -816,33 +828,63 @@ export default function Home() {
               {[1, 2, 3, 4, 6, 8].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : filteredEvents.length === 0 ? (
+          <div style={{
+            background: "rgba(255,255,255,0.6)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "20px",
+            border: "1.5px solid rgba(255,255,255,0.8)",
+            boxShadow: "0 8px 32px rgba(31,38,135,0.04)",
+            padding: "56px 32px",
+            textAlign: "center",
+            position: "relative",
+            zIndex: 1,
+          }}>
+            {/* Icon */}
             <div style={{
-              background: "rgba(255, 255, 255, 0.45)", backdropFilter: "blur(20px)",
-              borderRadius: "20px", border: "1.5px dashed #E5E7EB",
-              padding: "60px 32px", textAlign: "center", position: "relative", zIndex: 1
+              width: "64px", height: "64px", borderRadius: "18px",
+              background: "linear-gradient(135deg, #fff5f2 0%, #fff 100%)",
+              border: "1.5px solid rgba(240,85,55,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 20px",
+              boxShadow: "0 4px 12px rgba(240,85,55,0.08)"
             }}>
-              <div style={{ width: "64px", height: "64px", borderRadius: "20px", background: "#FFF5F2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "1.8rem" }}>
-                🎫
-              </div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#111827", marginBottom: "8px" }}>
-                {events.length === 0 ? "No events yet" : `No ${activeFilter} events`}
-              </h3>
-              <p style={{ fontSize: "0.875rem", color: "#9CA3AF", marginBottom: "24px", maxWidth: "320px", margin: "0 auto 24px", lineHeight: 1.6 }}>
-                {events.length === 0
-                  ? "Be the first to create an event on SWYFT and start selling tickets to your campus."
-                  : `No events in the ${activeFilter} category right now. Try a different filter.`}
-              </p>
-              {events.length === 0 && (
-                <Link href="/organizer/events/new" style={{
-                  display: "inline-flex", alignItems: "center", gap: "8px", height: "44px",
-                  padding: "0 24px", borderRadius: "100px", textDecoration: "none",
-                  background: "linear-gradient(135deg, #f05537, #d1410c)", color: "#fff",
-                  fontWeight: 800, fontSize: "0.9rem",
-                }}>
-                  Create an Event
-                </Link>
-              )}
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 12V22H4V12"/>
+                <path d="M22 7H2v5h20V7z"/>
+                <path d="M12 22V7"/>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+              </svg>
             </div>
+
+            <h3 style={{ fontSize: "1.15rem", fontWeight: 900, color: "#111827", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+              {events.length === 0 ? "No events yet" : `No ${activeFilter} events`}
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "#6B7280", maxWidth: "320px", margin: "0 auto 24px", lineHeight: 1.65 }}>
+              {events.length === 0
+                ? "Be the first to create an event on SWYFT and start selling tickets to your campus."
+                : `No events in the ${activeFilter} category right now. Try a different filter.`}
+            </p>
+
+            {events.length === 0 && (
+              <Link href="/organizer/events/new" style={{
+                display: "inline-flex", alignItems: "center", gap: "8px",
+                height: "44px", padding: "0 24px", borderRadius: "100px",
+                textDecoration: "none",
+                background: "#f05537", color: "#fff",
+                fontWeight: 800, fontSize: "0.875rem",
+                boxShadow: "0 4px 14px rgba(240,85,55,0.25)",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#d1410c"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#f05537"; e.currentTarget.style.transform = "translateY(0)"; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                Create an Event
+              </Link>
+            )}
+          </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 420px), 1fr))", gap: "20px", position: "relative", zIndex: 1 }}>
               {filteredEvents.slice(0, 8).map((event) => (
