@@ -360,75 +360,54 @@ export default function Home() {
     <div style={{ background: "#F8F7FA", minHeight: "100vh" }}>
 
       {/* ── HERO ────────────────────────────────────── */}
-      <div style={{ maxWidth: "1360px", margin: "0 auto", padding: "24px 24px 0" }}>
-        <div style={{ position: "relative", borderRadius: "24px", overflow: "hidden", background: "#050212", minHeight: "480px", display: "flex", alignItems: "center" }}>
+      <div style={{ maxWidth: "1360px", margin: "0 auto", padding: "16px 16px 0" }}>
+        <div className="relative rounded-2xl md:rounded-3xl overflow-hidden bg-[#050212] min-h-[380px] md:min-h-[480px] flex items-center">
           <img
             src="https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=1600&q=80"
             alt="Campus Events"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "right 30%", opacity: 0.55 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", opacity: 0.55 }}
           />
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(5,2,18,0.95) 0%, rgba(5,2,18,0.78) 45%, rgba(5,2,18,0.2) 80%, transparent 100%)" }} />
 
           {/* Hero Content */}
-          <div style={{ position: "relative", zIndex: 1, padding: "48px 64px", maxWidth: "720px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }}>
+          <div className="relative z-10 p-6 sm:p-8 md:p-12 lg:p-16 max-w-[720px] flex flex-col gap-3 items-start">
             
             {/* GET INTO IT Badge */}
-            <div style={{ 
-              background: "#d958a6", 
-              color: "#ffffff", 
-              fontSize: "0.82rem", 
-              fontWeight: 800, 
-              letterSpacing: "0.15em", 
-              padding: "5px 12px", 
-              textTransform: "uppercase",
-              borderRadius: "4px",
-            }}>
+            <div className="text-xs font-extrabold tracking-widest uppercase px-3 py-1 rounded text-white" style={{ background: "#d958a6" }}>
               GET INTO IT
             </div>
 
             {/* Heading Highlight Blocks */}
             <h1 className="hero-heading" style={{ margin: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
-              <span style={{ 
+              <span className="text-2xl sm:text-3xl md:text-5xl font-black uppercase inline-block" style={{ 
                 background: "linear-gradient(90deg, #FBCFE8 0%, #C7D2FE 100%)", 
                 color: "#1E0A3C", 
-                fontSize: "clamp(2rem, 5vw, 3.2rem)", 
-                fontWeight: 950, 
                 letterSpacing: "-0.02em", 
-                padding: "8px 20px", 
-                textTransform: "uppercase",
-                lineHeight: "1.1",
-                display: "inline-block",
+                padding: "6px 14px",
+                lineHeight: "1.15",
                 boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
               }}>
                 FROM CAMPUS RAVES
               </span>
               
-              <span style={{ 
+              <span className="text-2xl sm:text-3xl md:text-5xl font-black uppercase inline-block" style={{ 
                 background: "linear-gradient(90deg, #FBCFE8 0%, #C7D2FE 100%)", 
                 color: "#1E0A3C", 
-                fontSize: "clamp(2rem, 5vw, 3.2rem)", 
-                fontWeight: 950, 
                 letterSpacing: "-0.02em", 
-                padding: "8px 20px", 
-                textTransform: "uppercase",
-                lineHeight: "1.1",
-                display: "inline-block",
+                padding: "6px 14px",
+                lineHeight: "1.15",
                 boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
               }}>
                 TO SUG ELECTIONS
               </span>
             </h1>
 
-            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "1.05rem", lineHeight: 1.6, marginTop: "16px", marginBottom: "28px", maxWidth: "460px" }}>
+            <p className="text-sm sm:text-base" style={{ color: "rgba(255,255,255,0.75)", lineHeight: 1.6, marginTop: "12px", marginBottom: "20px", maxWidth: "460px" }}>
               Discover, buy tickets, and vote in events across Nigerian campuses — all in one premium platform.
             </p>
 
-            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
-              <Link href="/events" style={{
-                display: "inline-flex", alignItems: "center",
-                height: "52px", padding: "0 36px", borderRadius: "100px",
-                background: "#ffffff", color: "#0F0A23",
-                fontWeight: 800, fontSize: "0.95rem", textDecoration: "none",
+            <div className="flex flex-wrap gap-3" style={{ alignItems: "center" }}>
+              <Link href="/events" className="inline-flex items-center h-11 md:h-[52px] px-5 md:px-9 rounded-full font-extrabold text-sm md:text-base text-[#0F0A23] bg-white no-underline" style={{
                 boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
                 transition: "all 0.2s ease-in-out",
               }}
@@ -444,11 +423,8 @@ export default function Home() {
                 Explore Campus Events
               </Link>
 
-              <Link href="/organizer" style={{
-                display: "inline-flex", alignItems: "center",
-                height: "52px", padding: "0 28px", borderRadius: "100px",
+              <Link href="/organizer" className="inline-flex items-center h-11 md:h-[52px] px-5 md:px-7 rounded-full font-bold text-sm md:text-base text-white no-underline" style={{
                 background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.25)",
-                color: "#ffffff", fontWeight: 700, fontSize: "0.9rem", textDecoration: "none",
                 backdropFilter: "blur(8px)",
                 transition: "all 0.2s ease-in-out",
               }}
@@ -546,22 +522,22 @@ export default function Home() {
         </div>
       </div>
 
-      <div style={{ maxWidth: "1360px", margin: "0 auto", padding: "16px 24px 80px" }}>
+      <div style={{ maxWidth: "1360px", margin: "0 auto", padding: "16px 16px 80px" }}>
 
         {/* ── CAMPUSES CAROUSEL ──────────────────────── */}
         <section style={{ marginBottom: "48px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, color: "#111827", letterSpacing: "-0.03em", margin: 0 }}>Top campuses</h2>
-              <p style={{ fontSize: "0.8rem", color: "#9CA3AF", marginTop: "3px", fontWeight: 500 }}>Filter events by your university</p>
+              <h2 className="text-xl md:text-2xl font-black text-gray-900" style={{ letterSpacing: "-0.03em", margin: 0 }}>Top campuses</h2>
+              <p className="text-xs text-gray-400 font-medium mt-0.5">Filter events by your university</p>
             </div>
-            <Link href="/events" style={{ fontSize: "0.82rem", color: "#f05537", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: "4px" }}>
+            <Link href="/events" className="text-xs md:text-sm font-bold no-underline flex items-center gap-1" style={{ color: "#f05537" }}>
               See all
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px" }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {campuses.map((campus) => (
               <Link
                 key={campus.name}
@@ -569,11 +545,7 @@ export default function Home() {
                 style={{ textDecoration: "none", display: "block" }}
               >
                 <div
-                  style={{
-                    position: "relative", height: "160px", borderRadius: "16px",
-                    overflow: "hidden", background: "#111827", cursor: "pointer",
-                    transition: "transform 0.25s ease, box-shadow 0.25s ease",
-                  }}
+                  className="relative h-[120px] md:h-[160px] rounded-2xl overflow-hidden bg-gray-900 cursor-pointer transition-transform duration-250 ease-out hover:-translate-y-1 hover:shadow-xl"
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
                     (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 32px rgba(0,0,0,0.2)";
