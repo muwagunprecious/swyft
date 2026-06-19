@@ -640,52 +640,39 @@ export default function Home() {
             </div>
           ) : events.filter(e => e.isVotingEnabled).length === 0 ? (
           <div style={{
-            background: "rgba(255,255,255,0.6)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "20px",
-            border: "1.5px solid rgba(255,255,255,0.8)",
-            boxShadow: "0 8px 32px rgba(31,38,135,0.04)",
-            padding: "48px 32px",
-            textAlign: "center",
-            position: "relative",
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1px solid #E5E7EB',
+            boxShadow: '0 1px 4px rgba(16,24,40,0.04)',
+            padding: '48px 32px',
+            textAlign: 'center',
+            position: 'relative',
             zIndex: 1,
           }}>
-            {/* Icon */}
+            {/* Icon block */}
             <div style={{
-              width: "64px", height: "64px", borderRadius: "18px",
-              background: "linear-gradient(135deg, #fff5f2 0%, #fff 100%)",
-              border: "1.5px solid rgba(240,85,55,0.15)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 20px",
-              boxShadow: "0 4px 12px rgba(240,85,55,0.08)"
+              width: '52px', height: '52px', borderRadius: '12px',
+              background: '#F9FAFB', border: '1px solid #E5E7EB',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
             }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 12l2 2 4-4" />
-                <path d="M21 12c0 1.2-.504 2.303-1.313 3.098M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0" />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 12l2 2 4-4"/>
+                <circle cx="12" cy="12" r="10"/>
               </svg>
             </div>
 
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 900, color: "#111827", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+            <p style={{ fontSize: '0.72rem', fontWeight: 800, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Active Elections &amp; Voting</p>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827', margin: '0 0 10px', letterSpacing: '-0.02em' }}>
               No Active Campaigns
             </h3>
-            <p style={{ fontSize: "0.85rem", color: "#6B7280", maxWidth: "340px", margin: "0 auto 24px", lineHeight: 1.65 }}>
+            <p style={{ fontSize: '0.85rem', color: '#6B7280', maxWidth: '320px', margin: '0 auto 28px', lineHeight: 1.6, fontWeight: 500 }}>
               Hosting an SUG election, department awards, or pageantry on campus? Create an active voting lobby instantly.
             </p>
 
-            <Link href="/organizer/voting" style={{
-              display: "inline-flex", alignItems: "center", gap: "8px",
-              height: "44px", padding: "0 24px", borderRadius: "100px",
-              textDecoration: "none",
-              background: "#f05537", color: "#ffffff",
-              fontWeight: 800, fontSize: "0.875rem",
-              boxShadow: "0 4px 14px rgba(240,85,55,0.25)",
-              transition: "all 0.2s"
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#d1410c"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#f05537"; e.currentTarget.style.transform = "translateY(0)"; }}
+            <Link href="/organizer/voting"
+              className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-[#f05537] hover:bg-[#d1410c] text-sm font-black uppercase tracking-wider text-white shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 no-underline"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
               Setup Voting Campaign
             </Link>
           </div>
@@ -829,27 +816,23 @@ export default function Home() {
             </div>
           ) : filteredEvents.length === 0 ? (
           <div style={{
-            background: "rgba(255,255,255,0.6)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "20px",
-            border: "1.5px solid rgba(255,255,255,0.8)",
-            boxShadow: "0 8px 32px rgba(31,38,135,0.04)",
-            padding: "56px 32px",
-            textAlign: "center",
-            position: "relative",
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1px solid #E5E7EB',
+            boxShadow: '0 1px 4px rgba(16,24,40,0.04)',
+            padding: '56px 32px',
+            textAlign: 'center',
+            position: 'relative',
             zIndex: 1,
           }}>
-            {/* Icon */}
+            {/* Icon block */}
             <div style={{
-              width: "64px", height: "64px", borderRadius: "18px",
-              background: "linear-gradient(135deg, #fff5f2 0%, #fff 100%)",
-              border: "1.5px solid rgba(240,85,55,0.15)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 20px",
-              boxShadow: "0 4px 12px rgba(240,85,55,0.08)"
+              width: '52px', height: '52px', borderRadius: '12px',
+              background: '#F9FAFB', border: '1px solid #E5E7EB',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
             }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 12V22H4V12"/>
                 <path d="M22 7H2v5h20V7z"/>
                 <path d="M12 22V7"/>
@@ -858,29 +841,20 @@ export default function Home() {
               </svg>
             </div>
 
-            <h3 style={{ fontSize: "1.15rem", fontWeight: 900, color: "#111827", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
-              {events.length === 0 ? "No events yet" : `No ${activeFilter} events`}
+            <p style={{ fontSize: '0.72rem', fontWeight: 800, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Upcoming Events</p>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827', margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+              {events.length === 0 ? 'No events yet' : `No ${activeFilter} events`}
             </h3>
-            <p style={{ fontSize: "0.85rem", color: "#6B7280", maxWidth: "320px", margin: "0 auto 24px", lineHeight: 1.65 }}>
+            <p style={{ fontSize: '0.85rem', color: '#6B7280', maxWidth: '300px', margin: '0 auto 28px', lineHeight: 1.6, fontWeight: 500 }}>
               {events.length === 0
-                ? "Be the first to create an event on SWYFT and start selling tickets to your campus."
+                ? 'Be the first to create an event on SWYFT and start selling tickets to your campus.'
                 : `No events in the ${activeFilter} category right now. Try a different filter.`}
             </p>
 
             {events.length === 0 && (
-              <Link href="/organizer/events/new" style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                height: "44px", padding: "0 24px", borderRadius: "100px",
-                textDecoration: "none",
-                background: "#f05537", color: "#fff",
-                fontWeight: 800, fontSize: "0.875rem",
-                boxShadow: "0 4px 14px rgba(240,85,55,0.25)",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#d1410c"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#f05537"; e.currentTarget.style.transform = "translateY(0)"; }}
+              <Link href="/organizer/events/new"
+                className="inline-flex items-center gap-2 h-11 px-6 rounded-xl bg-[#f05537] hover:bg-[#d1410c] text-sm font-black uppercase tracking-wider text-white shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200 no-underline"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                 Create an Event
               </Link>
             )}
