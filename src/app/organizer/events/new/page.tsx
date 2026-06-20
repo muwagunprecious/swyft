@@ -287,7 +287,7 @@ export default function CreateEventPage() {
 
               {/* COLUMN HEADERS */}
               <div
-                className={`mb-2 grid gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 ${
+                className={`mb-2 hidden sm:grid gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 ${
                   ticketMode === "paid" ? "grid-cols-[1fr_140px_110px_36px]" : "grid-cols-[1fr_110px_36px]"
                 }`}
               >
@@ -299,63 +299,77 @@ export default function CreateEventPage() {
               </div>
 
               {/* TICKET ROWS */}
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-4 sm:gap-2">
                 {tickets.map((ticket, i) => (
                   <div
                     key={ticket.id}
-                    className={`grid items-center gap-2 ${
-                      ticketMode === "paid" ? "grid-cols-[1fr_140px_110px_36px]" : "grid-cols-[1fr_110px_36px]"
+                    className={`grid items-end gap-3 sm:items-center sm:gap-2 rounded-xl sm:rounded-none border border-gray-100 sm:border-none p-3 sm:p-0 bg-gray-50 sm:bg-transparent ${
+                      ticketMode === "paid" ? "grid-cols-2 sm:grid-cols-[1fr_140px_110px_36px]" : "grid-cols-2 sm:grid-cols-[1fr_110px_36px]"
                     }`}
                   >
                     {/* Category Name */}
-                    <input
-                      value={ticket.name}
-                      onChange={(e) => updateTicket(ticket.id, "name", e.target.value)}
-                      placeholder={
-                        ticketMode === "paid"
-                          ? i === 0 ? "Regular" : i === 1 ? "VIP" : i === 2 ? "VVIP" : `Tier ${i + 1}`
-                          : ticketMode === "donation"
-                          ? "General Donation"
-                          : "Free Entry"
-                      }
-                      className="h-10 rounded-lg border border-gray-200 bg-[#F7F8FA] px-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
-                    />
+                    <div className="col-span-2 sm:col-span-1">
+                      <span className="mb-1.5 block text-[10px] font-bold uppercase text-gray-400 sm:hidden">Category Name</span>
+                      <input
+                        value={ticket.name}
+                        onChange={(e) => updateTicket(ticket.id, "name", e.target.value)}
+                        placeholder={
+                          ticketMode === "paid"
+                            ? i === 0 ? "Regular" : i === 1 ? "VIP" : i === 2 ? "VVIP" : `Tier ${i + 1}`
+                            : ticketMode === "donation"
+                            ? "General Donation"
+                            : "Free Entry"
+                        }
+                        className="h-10 w-full rounded-lg border border-gray-200 bg-white sm:bg-[#F7F8FA] px-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
+                      />
+                    </div>
 
                     {/* Price — only for paid/donation */}
                     {(ticketMode === "paid" || ticketMode === "donation") && (
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-400">₦</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={ticket.price}
-                          onChange={(e) => updateTicket(ticket.id, "price", e.target.value)}
-                          placeholder={ticketMode === "donation" ? "0" : "0.00"}
-                          className="h-10 w-full rounded-lg border border-gray-200 bg-[#F7F8FA] pl-7 pr-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
-                        />
+                      <div>
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase text-gray-400 sm:hidden">
+                          {ticketMode === "paid" ? "Price (₦)" : "Min. Amount (₦)"}
+                        </span>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-400">₦</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={ticket.price}
+                            onChange={(e) => updateTicket(ticket.id, "price", e.target.value)}
+                            placeholder={ticketMode === "donation" ? "0" : "0.00"}
+                            className="h-10 w-full rounded-lg border border-gray-200 bg-white sm:bg-[#F7F8FA] pl-7 pr-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
+                          />
+                        </div>
                       </div>
                     )}
 
                     {/* Capacity */}
-                    <input
-                      type="number"
-                      min="1"
-                      value={ticket.capacity}
-                      onChange={(e) => updateTicket(ticket.id, "capacity", e.target.value)}
-                      placeholder="100"
-                      className="h-10 rounded-lg border border-gray-200 bg-[#F7F8FA] px-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
-                    />
+                    <div>
+                      <span className="mb-1.5 block text-[10px] font-bold uppercase text-gray-400 sm:hidden">Capacity</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={ticket.capacity}
+                        onChange={(e) => updateTicket(ticket.id, "capacity", e.target.value)}
+                        placeholder="100"
+                        className="h-10 w-full rounded-lg border border-gray-200 bg-white sm:bg-[#F7F8FA] px-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
+                      />
+                    </div>
 
                     {/* Remove */}
-                    <button
-                      onClick={() => removeTicket(ticket.id)}
-                      disabled={tickets.length === 1}
-                      className="flex h-10 w-9 items-center justify-center rounded-lg border border-gray-100 text-gray-300 transition hover:border-red-200 hover:bg-red-50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-20"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                      </svg>
-                    </button>
+                    <div className="flex justify-end sm:justify-center">
+                      <button
+                        onClick={() => removeTicket(ticket.id)}
+                        disabled={tickets.length === 1}
+                        className="flex h-10 w-full sm:w-9 items-center justify-center rounded-lg border border-red-100 sm:border-gray-100 bg-red-50 sm:bg-transparent text-red-500 sm:text-gray-300 transition hover:border-red-200 hover:bg-red-50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-20 disabled:bg-gray-100 disabled:border-gray-100 disabled:text-gray-300"
+                      >
+                        <span className="mr-2 text-xs font-bold sm:hidden">Remove</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
