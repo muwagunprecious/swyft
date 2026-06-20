@@ -323,12 +323,12 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         <h1 className="text-[16px] font-black text-[#1a202c]">{pageTitle}</h1>
 
         {/* User badge */}
-        <div className="flex items-center gap-2.5">
+        <div className="hidden sm:flex items-center gap-2.5">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.8">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-          <span className="text-[14px] font-bold text-[#1a202c]">{user?.name || "SWYFT Admin"}</span>
+          <span className="truncate max-w-[150px] text-[14px] font-bold text-[#1a202c]">{user?.name || "SWYFT Admin"}</span>
         </div>
       </div>
 
