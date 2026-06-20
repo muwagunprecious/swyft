@@ -245,7 +245,7 @@ function EventCard({ event }: { event: ApiEvent }) {
             <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#f05537" }}>
               {priceLabel}
             </div>
-            {event.isVotingEnabled ? (
+            {event.isVotingEnabled && (
               <span style={{
                 background: "rgba(240, 85, 55, 0.1)",
                 color: "#f05537",
@@ -265,22 +265,6 @@ function EventCard({ event }: { event: ApiEvent }) {
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#f05537]"></span>
                 </span>
                 Vote Live
-              </span>
-            ) : (
-              <span style={{
-                background: "rgba(107, 114, 128, 0.1)",
-                color: "#6B7280",
-                fontSize: "0.68rem",
-                fontWeight: 800,
-                padding: "4px 10px",
-                borderRadius: "8px",
-                border: "1px solid rgba(107, 114, 128, 0.25)",
-                textTransform: "uppercase",
-                letterSpacing: "0.02em",
-                display: "inline-flex",
-                alignItems: "center",
-              }}>
-                Closed
               </span>
             )}
           </div>
@@ -607,6 +591,7 @@ export default function Home() {
         </section>
 
         {/* ── ACTIVE VOTING CAMPAIGNS ────────────────────── */}
+        {(loading || events.filter(e => e.isVotingEnabled).length > 0) && (
         <section style={{ marginBottom: "56px", position: "relative" }}>
           {/* Subtle background glow */}
           <div style={{
@@ -779,6 +764,7 @@ export default function Home() {
             </div>
           )}
         </section>
+        )}
 
         {/* ── UPCOMING EVENTS ──────────────────────── */}
         <section style={{ position: "relative" }}>
