@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { usePaystackPayment } from "react-paystack";
 import api from "@/lib/api";
 
 const formatNaira = (amount: number) => {
@@ -143,36 +144,53 @@ export default function EventVotingPage() {
     }
   };
 
-  // Cast paid vote API call (loops multiple casts for quantity)
-  const handleCastPaidVotes = async () => {
-    if (!pendingVote || !voterDetails) return;
-    try {
-      setIsSubmittingVote(true);
-      setShowPaymentModal(false);
-      
-      // We simulate multiple vote inserts in loop
-      const promises = [];
-      for (let i = 0; i < paidVoteQty; i++) {
-        promises.push(
-          api.post("/votes/cast", {
-            categoryId: pendingVote.categoryId,
-            contestantId: pendingVote.contestantId,
-            name: voterDetails.name,
-            email: voterDetails.email,
-          })
-        );
-      }
+  const config = {
+    reference: `VOTE-${Date.now()}`,
+    email: voterDetails?.email || 'voter@otix.com',
+    amount: (event?.voteCost || 50) * paidVoteQty * 100, // Paystack expects kobo
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_171204c7a940f7191190fc6bbd8e2e4c20092c00',
+  };
 
-      await Promise.all(promises);
-      triggerToast(`Successfully cast ${paidVoteQty} paid votes!`, "success");
-      fetchVotingData();
-      setPaidVoteQty(1);
-      setPendingVote(null);
-    } catch (err: any) {
-      triggerToast(err.response?.data?.message || "Paid voting checkout failed.", "error");
-    } finally {
-      setIsSubmittingVote(false);
-    }
+  const initializePayment = usePaystackPayment(config);
+
+  // Cast paid vote API call (loops multiple casts for quantity)
+  const handleCastPaidVotes = () => {
+    if (!pendingVote || !voterDetails) return;
+    
+    initializePayment({
+      onSuccess: async () => {
+        try {
+          setIsSubmittingVote(true);
+          setShowPaymentModal(false);
+          
+          // We cast multiple votes
+          const promises = [];
+          for (let i = 0; i < paidVoteQty; i++) {
+            promises.push(
+              api.post("/votes/cast", {
+                categoryId: pendingVote.categoryId,
+                contestantId: pendingVote.contestantId,
+                name: voterDetails.name,
+                email: voterDetails.email,
+              })
+            );
+          }
+
+          await Promise.all(promises);
+          triggerToast(`Successfully cast ${paidVoteQty} paid votes!`, "success");
+          fetchVotingData();
+          setPaidVoteQty(1);
+          setPendingVote(null);
+        } catch (err: any) {
+          triggerToast(err.response?.data?.message || "Paid voting cast failed.", "error");
+        } finally {
+          setIsSubmittingVote(false);
+        }
+      },
+      onClose: () => {
+        triggerToast("Payment cancelled.", "error");
+      }
+    });
   };
 
   if (loading) {
