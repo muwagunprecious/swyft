@@ -555,40 +555,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── POPULAR CAMPUS PILLS ──────────────────── */}
-        <section style={{ marginBottom: "56px" }}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#374151", letterSpacing: "-0.02em", marginBottom: "14px" }}>
-            Browse by campus
-          </h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {universities.map((uni) => (
-              <Link
-                key={uni}
-                href={`/events?university=${uni}`}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "6px",
-                  padding: "8px 16px", borderRadius: "100px",
-                  background: "#fff", border: "1.5px solid #E5E7EB",
-                  fontSize: "0.82rem", fontWeight: 600, color: "#374151",
-                  textDecoration: "none", transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "#f05537";
-                  (e.currentTarget as HTMLAnchorElement).style.color = "#f05537";
-                  (e.currentTarget as HTMLAnchorElement).style.background = "#FFF5F2";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = "#E5E7EB";
-                  (e.currentTarget as HTMLAnchorElement).style.color = "#374151";
-                  (e.currentTarget as HTMLAnchorElement).style.background = "#fff";
-                }}
-              >
-                <span style={{ fontSize: "0.75rem" }}>📍</span>
-                Events in {uni}
-              </Link>
-            ))}
-          </div>
-        </section>
+
 
         {/* ── ACTIVE VOTING CAMPAIGNS ────────────────────── */}
         {(loading || events.filter(e => e.isVotingEnabled).length > 0) && (
