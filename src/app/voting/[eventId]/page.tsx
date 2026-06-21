@@ -16,6 +16,7 @@ export default function EventVotingPage() {
   const [event, setEvent] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [showMobileCandidates, setShowMobileCandidates] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -408,7 +409,10 @@ export default function EventVotingPage() {
                   return (
                     <button
                       key={category.id}
-                      onClick={() => setActiveCategoryId(category.id)}
+                      onClick={() => {
+                        setActiveCategoryId(category.id);
+                        setShowMobileCandidates(true);
+                      }}
                       className={`text-left p-6 rounded-[24px] border transition-all duration-300 flex items-start gap-4 cursor-pointer relative overflow-hidden group select-none ${
                         isActive
                           ? "bg-[#1e0a3c] border-transparent shadow-[0_8px_30px_rgba(30,10,60,0.15)] scale-[1.02] text-white"
@@ -454,7 +458,27 @@ export default function EventVotingPage() {
 
           {/* Active Category Candidates Dashboard */}
           {activeCategoryId && (
-            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <>
+              {/* Mobile overlay backdrop */}
+              {showMobileCandidates && (
+                <div 
+                  className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden animate-in fade-in duration-300" 
+                  onClick={() => setShowMobileCandidates(false)} 
+                />
+              )}
+              
+              <div className={`
+                ${showMobileCandidates ? 'fixed inset-x-0 bottom-0 z-[70] h-[85vh] overflow-y-auto bg-[#faf9fc] rounded-t-[32px] p-5 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 lg:static lg:h-auto lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none lg:rounded-none lg:mt-8' : 'hidden lg:block lg:static lg:mt-8 lg:animate-in lg:fade-in lg:slide-in-from-bottom-4'}
+              `}>
+                {/* Mobile close handle */}
+                <div className="lg:hidden flex items-center justify-center mb-6 sticky -top-5 bg-[#faf9fc] z-20 -mx-5 px-5 py-4 border-b border-gray-150">
+                  <div className="absolute top-2 w-12 h-1.5 rounded-full bg-gray-300" />
+                  <h3 className="text-base font-black text-gray-900 mt-2 truncate max-w-[70%] text-center">
+                    {categories.find(c => c.id === activeCategoryId)?.name}
+                  </h3>
+                  <button onClick={() => setShowMobileCandidates(false)} className="absolute right-5 top-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-sm text-xs">✕</button>
+                </div>
+
               {(() => {
                 const activeCategory = categories.find((c) => c.id === activeCategoryId);
                 if (!activeCategory) return null;
@@ -618,6 +642,7 @@ export default function EventVotingPage() {
                 );
               })()}
             </div>
+            </>
           )}
         </div>
 
