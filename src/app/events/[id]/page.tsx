@@ -123,8 +123,8 @@ export default function EventDetailsPage() {
       {/* Main Container */}
       <div className="mx-auto max-w-[1200px] px-6 pt-8 relative z-10">
         
-        {/* Navigation Breadcrumb */}
-        <div className="mb-8">
+        {/* Navigation Breadcrumb & Mobile Share */}
+        <div className="mb-8 flex items-center justify-between">
           <Link 
             href="/events" 
             className="inline-flex items-center gap-2 text-sm font-black text-gray-500 hover:text-[#f05537] transition-colors group no-underline"
@@ -132,6 +132,10 @@ export default function EventDetailsPage() {
             <span className="group-hover:-translate-x-1 transition-transform">←</span>
             Back to Events
           </Link>
+
+          <div className="lg:hidden">
+            <ShareButton />
+          </div>
         </div>
 
         {/* Outer Shell Grid */}
@@ -190,8 +194,10 @@ export default function EventDetailsPage() {
                   {event.category}
                 </span>
                 
-                {/* Micro-interactive Share button */}
-                <ShareButton />
+                {/* Micro-interactive Share button (Desktop Only) */}
+                <div className="hidden lg:block">
+                  <ShareButton />
+                </div>
               </div>
 
               {/* Title */}
