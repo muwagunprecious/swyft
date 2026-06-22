@@ -52,15 +52,28 @@ export default function CheckoutForm() {
      const qty = Number(item.qty) || 0;
      return acc + (price * qty);
    }, 0);
-  const fee = Math.round(subtotal * 0.05);
+  // OTIX Platform Fee: 5% + ₦100
+  const fee = Math.round(subtotal * 0.05) + 100;
   const total = subtotal + fee;
 
-  const config = {
+  // Retrieve subaccount code from the first cart item (all items belong to the same event)
+  const subaccountCode = cartItems.length > 0 ? cartItems[0].subaccountCode : undefined;
+
+  const config: any = {
     reference: orderData?.reference || checkoutReference || fallbackRef,
     email: form.email,
     amount: total * 100, // Paystack expects kobo
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_demo',
   };
+
+  // If the event organizer has a linked payout account, route funds to them directly
+  if (subaccountCode) {
+    config.subaccount = subaccountCode;
+    // Platform bears Paystack's transaction fee so the organizer gets exactly their subtotal
+    config.bearer = 'account';
+    // The platform takes the calculated OTIX fee flat
+    config.transaction_charge = fee * 100;
+  }
 
   const initializePayment = usePaystackPayment(config);
 
@@ -405,9 +418,9 @@ export default function CheckoutForm() {
                   <span style={{ fontSize: '0.82rem', color: '#6B7280', fontWeight: 600 }}>Subtotal</span>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#111827' }}>₦{subtotal.toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.82rem', color: '#6B7280', fontWeight: 600 }}>Service Fee</span>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#111827' }}>₦{fee.toLocaleString()}</span>
+                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <span className="text-sm font-semibold text-gray-500">Service Fee</span>
+                  <span className="text-sm font-bold text-gray-800">₦{fee.toLocaleString()}</span>
                 </div>
                 <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, color: '#111827' }}>Total</span>

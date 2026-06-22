@@ -16,10 +16,11 @@ interface Props {
   eventId: string;
   eventTitle: string;
   eventImage: string;
+  subaccountCode?: string;
   tickets: Ticket[];
 }
 
-export default function TicketWidget({ eventId, eventTitle, eventImage, tickets }: Props) {
+export default function TicketWidget({ eventId, eventTitle, eventImage, subaccountCode, tickets }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -40,6 +41,7 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, tickets 
       price: selectedTicket.price,
       qty,
       image: eventImage,
+      subaccountCode,
     };
 
     localStorage.setItem("otix_cart", JSON.stringify([cartItem]));

@@ -16,7 +16,7 @@ interface ApiEvent {
   location: string;
   category: string;
   isVotingEnabled?: boolean;
-  organizer?: { name: string };
+  organizer?: { name: string; subaccountCode?: string };
   Ticket?: { id: string; name: string; price: number; quantity: number; sold: number }[];
 }
 
@@ -282,6 +282,7 @@ export default function EventDetailsPage() {
                 eventId={event.id} 
                 eventTitle={event.title}
                 eventImage={event.bannerImage}
+                subaccountCode={event.organizer?.subaccountCode}
                 tickets={tickets} 
               />
 
