@@ -146,7 +146,7 @@ export default function Login() {
 
       const searchParams = new URLSearchParams(window.location.search);
       const redirectTarget = searchParams.get('redirect');
-      const target = redirectTarget || (res.data.user.role === 'ORGANIZER' ? '/organizer' : '/dashboard');
+      const target = redirectTarget || (res.data.user.role === 'ADMIN' ? '/admin' : res.data.user.role === 'ORGANIZER' ? '/organizer' : '/dashboard');
 
       // Show university popup if no university saved
       if (!res.data.user.university) {
