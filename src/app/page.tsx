@@ -19,10 +19,10 @@ interface ApiEvent {
 }
 
 const campuses = [
-  { name: "OOU", image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=600&q=80" },
-  { name: "UNILAG", image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80" },
-  { name: "UI", image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=600&q=80" },
-  { name: "LASU", image: "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=600&q=80" },
+  { name: "OOU", image: "/images/oou_logo.jpg" },
+  { name: "UNILAG", image: "/images/unilag_logo.jpg" },
+  { name: "UI", image: "/images/ui_logo.jpg" },
+  { name: "LASU", image: "/images/lasu_logo.png" },
 ];
 
 const categoriesWithIcons = [
@@ -529,26 +529,32 @@ export default function Home() {
                 style={{ textDecoration: "none", display: "block" }}
               >
                 <div
-                  className="relative h-[120px] md:h-[160px] rounded-2xl overflow-hidden bg-gray-900 cursor-pointer transition-transform duration-250 ease-out hover:-translate-y-1 hover:shadow-xl"
+                  className="relative h-[130px] md:h-[160px] rounded-2xl cursor-pointer transition-all duration-250 ease-out flex flex-col items-center justify-center p-4 md:p-6"
+                  style={{
+                    border: "1px solid #E5E7EB",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
+                    background: "#ffffff",
+                    transition: "all 0.2s ease"
+                  }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 32px rgba(0,0,0,0.2)";
+                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 32px rgba(0,0,0,0.06)";
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "#f05537";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(0,0,0,0.02)";
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "#E5E7EB";
                   }}
                 >
-                  <img src={campus.image} alt={campus.name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.75 }} />
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)" }} />
-                  <div style={{ position: "absolute", bottom: "12px", left: "14px", right: "14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "1rem", fontWeight: 900, color: "#fff" }}>{campus.name}</span>
-                    <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#f05537", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </div>
+                  <div style={{ width: "56px", height: "56px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
+                    <img src={campus.image} alt={campus.name} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
                   </div>
-                  {/* Orange bottom bar */}
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "3px", background: "#f05537" }} />
+                  <span style={{ fontSize: "0.95rem", fontWeight: 800, color: "#1F2937" }}>{campus.name}</span>
+                  {/* Subtle orange indicator arrow */}
+                  <div style={{ position: "absolute", top: "12px", right: "12px", width: "20px", height: "20px", borderRadius: "50%", background: "#FFF5F2", border: "1px solid #FEE2E2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f05537" strokeWidth="3.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  </div>
                 </div>
               </Link>
             ))}
