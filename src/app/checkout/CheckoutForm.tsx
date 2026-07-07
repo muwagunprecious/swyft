@@ -20,6 +20,32 @@ export default function CheckoutForm() {
   const [orderLoadingText, setOrderLoadingText] = useState('Initiating secure transaction channel...');
   const [checkoutReference, setCheckoutReference] = useState('');
   const [fallbackRef, setFallbackRef] = useState('');
+  const [timeLeft, setTimeLeft] = useState<number>(300); // 5 minutes in seconds
+
+  useEffect(() => {
+    if (step !== 2) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          alert("Your 5-minute ticket reservation has expired. The tickets have been released back to the marketplace.");
+          localStorage.removeItem('otix_cart');
+          router.push('/events');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [step, router]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
    useEffect(() => {
      setFallbackRef(`REF-${Date.now()}`);
@@ -337,6 +363,25 @@ export default function CheckoutForm() {
                   <span className="w-1.5 h-6 bg-[#f05537] rounded-full" />
                   Complete Payment
                 </h2>
+
+                {/* Countdown Timer Display */}
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1.5px solid #FCA5A5',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#991B1B',
+                  fontWeight: 700,
+                  fontSize: '0.85rem'
+                }}>
+                  <span style={{ fontSize: '1.1rem' }}>⏱️</span>
+                  <span>Ticket reserved for: <strong style={{ color: '#DC2626', fontSize: '0.95rem', fontFamily: 'monospace' }}>{formatTime(timeLeft)}</strong></span>
+                </div>
+
                 <p style={{ fontSize: '0.85rem', color: '#6B7280', marginBottom: '28px' }}>Click below to pay securely with Paystack.</p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 0' }}>
@@ -348,6 +393,10 @@ export default function CheckoutForm() {
 
                 <button 
                   onClick={() => {
+                    if (timeLeft <= 0) {
+                      alert('Your reservation has expired. Please go back and reserve again.');
+                      return;
+                    }
                     // Validate required fields
                     if (!form.email || !form.email.trim()) {
                       alert('Please enter a valid email address');
