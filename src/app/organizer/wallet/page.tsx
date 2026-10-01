@@ -50,6 +50,15 @@ export default function WalletPage() {
           if (res.data.bankDetails.accountNumber && !accountNumber) setAccountNumber(res.data.bankDetails.accountNumber);
           if (res.data.bankDetails.accountName && !accountName) setAccountName(res.data.bankDetails.accountName);
         }
+        if (!accountName && typeof window !== "undefined") {
+          try {
+            const stored = localStorage.getItem("otix_user");
+            if (stored) {
+              const u = JSON.parse(stored);
+              if (u.name) setAccountName(u.name.toUpperCase());
+            }
+          } catch {}
+        }
       }
     } catch (err) {
       console.error('Failed to fetch wallet data', err);
@@ -75,6 +84,31 @@ export default function WalletPage() {
 
   const handleRequestPayout = () => {
     setWithdrawError("");
+    if (availableBalance < 500) {
+      setWithdrawError(`You need at least ₦500 in available balance to request a withdrawal. Your current balance is ${formatNaira(availableBalance)}.`);
+      return;
+    }
+    const numAmount = Number(amount);
+    if (!amount || isNaN(numAmount) || numAmount < 500) {
+      setWithdrawError("Please enter an amount of at least ₦500.");
+      return;
+    }
+    if (numAmount > availableBalance) {
+      setWithdrawError(`The amount exceeds your available balance of ${formatNaira(availableBalance)}.`);
+      return;
+    }
+    if (!bank) {
+      setWithdrawError("Please select your settlement bank.");
+      return;
+    }
+    if (!accountNumber || accountNumber.length !== 10) {
+      setWithdrawError("Please enter a valid 10-digit account number.");
+      return;
+    }
+    if (!accountName.trim()) {
+      setWithdrawError("Please enter your account name matching your bank account.");
+      return;
+    }
     setStep("confirm");
   };
 
@@ -120,8 +154,8 @@ export default function WalletPage() {
           </div>
           <button
             onClick={() => setShowPayoutModal(true)}
-            disabled={availableBalance < 500}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-[#d1410c] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#b03507] disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-[#d1410c] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#b03507] active:scale-95"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 19V5M5 12l7-7 7 7" />
@@ -345,9 +379,24 @@ export default function WalletPage() {
             {step === "form" && (
               <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">
 
+                {availableBalance < 500 && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 flex items-start gap-2.5">
+                    <span className="text-base shrink-0">ℹ️</span>
+                    <div>
+                      <p className="text-[12px] font-bold text-amber-900">Minimum withdrawal is ₦500</p>
+                      <p className="text-[11px] font-medium text-amber-700 mt-0.5 leading-relaxed">
+                        Your current available balance is <strong>{formatNaira(availableBalance)}</strong>. Funds are generated strictly from completed ticket purchases for your events and will appear here in real time.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Amount */}
                 <div>
-                  <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">Amount to Withdraw</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#1a202c]">Amount to Withdraw</label>
+                    <span className="text-[11px] font-semibold text-gray-500">Available: {formatNaira(availableBalance)}</span>
+                  </div>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[14px] font-bold text-gray-400">₦</span>
                     <input
@@ -404,6 +453,7 @@ export default function WalletPage() {
                     />
                     <button
                       onClick={handleVerify}
+                      type="button"
                       disabled={accountNumber.length !== 10 || !bank || verifying}
                       className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-gray-900 px-4 text-[13px] font-bold text-white transition hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -430,8 +480,8 @@ export default function WalletPage() {
                 {/* CTA */}
                 <button
                   onClick={handleRequestPayout}
-                  disabled={!accountName || !bank || !accountNumber || !amount || Number(amount) < 500 || Number(amount) > availableBalance}
-                  className="flex h-11 w-full items-center justify-center rounded-full bg-[#d1410c] text-[14px] font-bold text-white transition hover:bg-[#b03507] disabled:opacity-40 disabled:cursor-not-allowed mt-2"
+                  type="button"
+                  className="flex h-11 w-full items-center justify-center rounded-full bg-[#d1410c] text-[14px] font-bold text-white transition hover:bg-[#b03507] active:scale-95 mt-2"
                 >
                   Review Request →
                 </button>
