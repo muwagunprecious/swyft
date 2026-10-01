@@ -1,81 +1,106 @@
 import Link from "next/link";
 
-type BaseEventShape = {
+export interface EventCardProps {
   id: string;
   title: string;
   date: string;
   location: string;
   category: string;
   bannerImage: string;
-  organizer?: { name: string } | string;
-  time?: string;
   university?: string;
-  faculty?: string;
   priceLabel?: string;
-  attendees?: number;
-  tickets?: { price: number; quantity: number; sold: number }[];
-  Ticket?: { price: number; quantity: number; sold: number }[];
-};
+  isVotingEnabled?: boolean;
+}
 
-type EventCardProps = BaseEventShape & {
-  compact?: boolean;
-};
+export function formatEventDate(dateString: string) {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+
+    const weekday = d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+    const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+    const day = d.getDate();
+
+    let hours = d.getHours();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minutes = d.getMinutes();
+    const timeStr = minutes > 0 ? `${hours}:${minutes.toString().padStart(2, "0")} ${ampm}` : `${hours}:00 ${ampm}`;
+
+    return `${weekday}, ${month} ${day} • ${timeStr}`;
+  } catch {
+    return dateString;
+  }
+}
 
 export default function EventCard({
   id,
   title,
   date,
-  time,
   location,
-  university,
   category,
   bannerImage,
-  priceLabel,
-  attendees,
-  compact,
+  university,
+  priceLabel = "Get Tickets",
+  isVotingEnabled = false,
 }: EventCardProps) {
-  const displayUniversity = university ?? "Campus";
-  const displayTime = time ?? new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const displayPrice = priceLabel ?? "Get Tickets";
-  const displayAttendees = attendees ?? 0;
-  const day = new Date(date).toLocaleDateString("en-US", { day: "2-digit" });
-  const month = new Date(date).toLocaleDateString("en-US", { month: "short" });
+  const formattedDate = formatEventDate(date);
 
   return (
     <Link href={`/events/${id}`} className="group block h-full no-underline">
-      <article className="card h-full overflow-hidden transition duration-200 group-hover:-translate-y-1 group-hover:shadow-xl">
-        <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
+      <article className="eb-card h-full flex flex-col justify-between">
+        
+        {/* Dominant Event Poster */}
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#f8f7fa]">
           <img
             src={bannerImage}
             alt={title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
           />
-          <div className="absolute left-3 top-3 rounded-lg bg-white px-3 py-2 text-center shadow-sm">
-            <p className="text-[0.68rem] font-black uppercase text-[#FF6B00]">{month}</p>
-            <p className="text-lg font-black leading-none text-gray-950">{day}</p>
-          </div>
-          <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-black text-white backdrop-blur">
-            {category}
-          </span>
+          {category && (
+            <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#39364f] shadow-sm">
+              {category}
+            </span>
+          )}
+          {isVotingEnabled && (
+            <span className="absolute top-3 right-3 rounded-full bg-[#d1410c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm">
+              Voting Live
+            </span>
+          )}
         </div>
 
-        <div className={compact ? "p-4" : "p-5"}>
-          <div className="mb-3 flex items-center gap-2 text-xs font-bold text-gray-500">
-            <span>{displayUniversity}</span>
-            <span className="h-1 w-1 rounded-full bg-gray-300" />
-            <span>{displayTime}</span>
+        {/* Content Section */}
+        <div className="p-4 flex flex-col flex-1 justify-between gap-3">
+          <div>
+            {/* Date line in Eventbrite brand accent */}
+            <p className="text-[13px] font-semibold text-[#d1410c] uppercase tracking-tight mb-1">
+              {formattedDate}
+            </p>
+
+            {/* Event Title */}
+            <h3 className="text-[16px] md:text-[18px] font-semibold leading-[22px] text-[#39364f] line-clamp-2 mb-1 group-hover:text-[#d1410c] transition-colors">
+              {title}
+            </h3>
+
+            {/* Location & Campus */}
+            <p className="text-[14px] font-medium text-[#6f7287] line-clamp-1">
+              {location} {university ? `• ${university}` : ""}
+            </p>
           </div>
-          <h3 className="line-clamp-2 text-lg font-black leading-snug text-gray-950">
-            {title}
-          </h3>
-          <p className="mt-2 line-clamp-1 text-sm font-semibold text-gray-500">
-            {location}
-          </p>
-          <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
-            <span className="text-sm font-black text-gray-950">{displayPrice}</span>
-            <span className="text-xs font-black text-[#1565FF]">{displayAttendees.toLocaleString()} going</span>
+
+          {/* Price & Call to Action Indicator */}
+          <div className="pt-2 border-t border-[#e5e7eb] flex items-center justify-between">
+            <span className="text-[14px] font-semibold text-[#39364f]">
+              {priceLabel}
+            </span>
+            <span className="text-[12px] font-semibold text-[#d1410c] group-hover:underline">
+              Tickets &rarr;
+            </span>
           </div>
         </div>
+
       </article>
     </Link>
   );
