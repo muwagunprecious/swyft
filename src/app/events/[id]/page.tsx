@@ -29,6 +29,13 @@ export default function EventDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -115,13 +122,6 @@ export default function EventDetailsPage() {
 
   const organizerName = typeof event.organizer === "object" ? event.organizer?.name : (event.organizer || "Event Organizer");
   const eventSlugOrId = event.slug || event.id;
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-  }, []);
 
   const shareUrl = origin ? `${origin}/events/${eventSlugOrId}` : `/events/${eventSlugOrId}`;
 
