@@ -61,6 +61,7 @@ export const universities = [
 
 export const filters = [
   "All",
+  "Party and nightlife",
   "Tech",
   "Entertainment",
   "Workshop",

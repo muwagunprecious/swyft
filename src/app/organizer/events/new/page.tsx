@@ -46,10 +46,42 @@ export default function CreateEventPage() {
     if (!file.type.startsWith("image/")) return;
     setPreview(URL.createObjectURL(file));
 
-    // Convert file to base64 for backend storage
+    // Compress & resize image to max 1280px width/height and JPEG quality 0.85
+    // This reduces multi-megabyte camera photos down to < 200KB so uploads are fast and never time out
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setBannerBase64(reader.result as string);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_WIDTH = 1280;
+        const MAX_HEIGHT = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          setBannerBase64(compressedDataUrl);
+        } else {
+          setBannerBase64(e.target?.result as string);
+        }
+      };
+      img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -72,6 +104,7 @@ export default function CreateEventPage() {
   };
 
   const handlePublish = async (isDraft = false) => {
+    if (publishing) return;
     if (!title.trim()) {
       alert("Event title is required!");
       return;
@@ -208,6 +241,7 @@ export default function CreateEventPage() {
               onChange={(e) => setCategory(e.target.value)}
               className="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 text-[14px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:ring-2 focus:ring-[#f05537]/20"
             >
+              <option value="Party and nightlife">Party and nightlife</option>
               <option value="Tech">Tech</option>
               <option value="Dinner">Dinner</option>
               <option value="Workshop">Workshop</option>
