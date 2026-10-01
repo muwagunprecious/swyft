@@ -85,8 +85,13 @@ export default function RegisterPage() {
         </p>
 
         {error && (
-          <div className="mb-5 rounded border border-[#fecaca] bg-[#fef2f2] p-3 text-[13px] font-medium text-[#d1410c]">
-            {error}
+          <div className="mb-5 rounded border border-[#fecaca] bg-[#fef2f2] p-3 text-[13px] font-medium text-[#d1410c] flex items-center justify-between">
+            <span>{error}</span>
+            {error.toLowerCase().includes("already exists") && (
+              <Link href={loginHref} className="underline font-bold text-[#d1410c] hover:text-[#b03508] shrink-0 ml-2">
+                Log in &rarr;
+              </Link>
+            )}
           </div>
         )}
 
