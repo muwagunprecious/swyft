@@ -7,6 +7,34 @@ import api from '@/lib/api';
 export default function OrganizerEvents() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const handleShare = (event: any) => {
+    const eventSlugOrId = event.slug || event.id;
+    const shareUrl = origin ? `${origin}/events/${eventSlugOrId}` : `/events/${eventSlugOrId}`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        title: event.title,
+        text: `Get tickets for ${event.title}!`,
+        url: shareUrl,
+      }).catch(() => {
+        navigator.clipboard.writeText(shareUrl);
+        setCopiedId(event.id);
+        setTimeout(() => setCopiedId(null), 2500);
+      });
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      setCopiedId(event.id);
+      setTimeout(() => setCopiedId(null), 2500);
+    }
+  };
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -113,15 +141,46 @@ export default function OrganizerEvents() {
               </div>
 
               {/* Actions Footer */}
-              <div className="bg-gray-50 border-t border-gray-100 p-3 flex justify-between">
-                <Link href={`/organizer/events/${event.id}`} className="text-xs font-bold text-gray-600 hover:text-[#f05537] transition-colors flex items-center gap-1.5 px-2 py-1 no-underline">
+              <div className="bg-gray-50 border-t border-gray-100 p-3 flex justify-between items-center">
+                <Link href={`/organizer/events/${event.id}`} className="text-xs font-bold text-gray-700 hover:text-[#d1410c] transition-colors flex items-center gap-1.5 px-2 py-1 no-underline">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
                   Manage
                 </Link>
-                <button className="text-xs font-bold text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1.5 px-2 py-1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  Duplicate
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleShare(event)}
+                    type="button"
+                    className={`text-xs font-bold transition-all flex items-center gap-1 px-2.5 py-1 rounded-lg ${
+                      copiedId === event.id 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'text-[#d1410c] hover:bg-orange-50 border border-transparent'
+                    }`}
+                  >
+                    {copiedId === event.id ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg>
+                        Share
+                      </>
+                    )}
+                  </button>
+                  <Link 
+                    href={`/events/${event.slug || event.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1 px-1.5 py-1 no-underline"
+                    title="View live public event page"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </Link>
+                </div>
               </div>
 
             </div>

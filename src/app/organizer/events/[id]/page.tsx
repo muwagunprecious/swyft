@@ -25,6 +25,16 @@ export default function EventDetailManagement() {
   const [attendees, setAttendees] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Sharing state
+  const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
   useEffect(() => {
     if (!id) return;
 
@@ -142,6 +152,31 @@ export default function EventDetailManagement() {
     a.id?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const eventSlugOrId = event?.slug || event?.id || id;
+  const publicEventUrl = origin ? `${origin}/events/${eventSlugOrId}` : `/events/${eventSlugOrId}`;
+
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(publicEventUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const handleShareEvent = () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        title: event?.title || 'Event on Swyft',
+        text: `Get your tickets for ${event?.title}!`,
+        url: publicEventUrl,
+      }).catch(() => {
+        handleCopyLink();
+      });
+    } else {
+      handleCopyLink();
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-8 pb-16">
       
@@ -149,23 +184,40 @@ export default function EventDetailManagement() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
-            <Link href="/organizer/events" className="hover:text-[#9333ea] transition no-underline">My Events</Link>
+            <Link href="/organizer/events" className="hover:text-[#d1410c] transition no-underline">My Events</Link>
             <span>/</span>
             <span className="text-gray-600">Event Details</span>
           </div>
           <h1 className="mt-1 text-2xl font-black text-gray-900 tracking-tight md:text-3xl">{event.title}</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button 
+            onClick={handleShareEvent}
+            type="button"
+            className="flex items-center gap-2 rounded-xl bg-[#d1410c] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#b03507] transition active:scale-95"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            {copied ? "Link Copied!" : "Share Event"}
+          </button>
+          <Link 
+            href={publicEventUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-700 no-underline shadow-sm hover:bg-gray-50 transition"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            View Live
+          </Link>
           <Link 
             href="/organizer/verification" 
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-xs font-bold text-gray-600 no-underline shadow-sm hover:bg-gray-50 transition"
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-600 no-underline shadow-sm hover:bg-gray-50 transition"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>
             Verify Tickets
           </Link>
-          <button className="flex items-center gap-2 rounded-xl bg-[#9333ea] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#7e22ce] transition">
-            Edit Event
-          </button>
         </div>
       </div>
 
@@ -173,7 +225,7 @@ export default function EventDetailManagement() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: 'Event Revenue', value: `₦${totalRevenue.toLocaleString()}`, sub: 'Clearance within 48h', color: '#12B76A', bg: '#f0fdf4' },
-          { label: 'Tickets Sold', value: `${totalSold} / ${totalCapacity}`, sub: `${totalCapacity - totalSold} tickets remaining`, color: '#9333ea', bg: '#faf5ff' },
+          { label: 'Tickets Sold', value: `${totalSold} / ${totalCapacity}`, sub: `${totalCapacity - totalSold} tickets remaining`, color: '#d1410c', bg: '#fff9f6' },
           { label: 'Attendance Check-in', value: `${checkedInCount} / ${totalSold || 1}`, sub: `${Math.round((checkedInCount / (totalSold || 1)) * 100)}% attendance rate`, color: '#3b82f6', bg: '#eff6ff' },
           { label: 'Voting Status', value: isVotingEnabled ? 'Active' : 'Disabled', sub: isVotingPaid ? `Paid • ₦${voteCost}/vote` : 'Free voting', color: '#f59e0b', bg: '#fffbeb' }
         ].map((s, idx) => (
@@ -198,10 +250,24 @@ export default function EventDetailManagement() {
               </div>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <h3 className="text-lg font-black text-gray-900">About Event</h3>
-                <p className="mt-1.5 text-sm font-medium text-gray-500 leading-relaxed">{event.description || 'No description provided.'}</p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">About Event</h3>
+                  <p className="mt-1.5 text-sm font-medium text-gray-500 leading-relaxed">{event.description || 'No description provided.'}</p>
+                </div>
+                <button
+                  onClick={handleShareEvent}
+                  type="button"
+                  className="shrink-0 flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-bold text-[#d1410c] hover:bg-orange-100 transition shadow-sm active:scale-95"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                  {copied ? "Copied!" : "Share Event"}
+                </button>
               </div>
+
               <div className="grid gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2 text-sm font-semibold text-gray-700">
                 <div className="flex items-center gap-2.5">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -210,6 +276,80 @@ export default function EventDetailManagement() {
                 <div className="flex items-center gap-2.5">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                   <span className="truncate">{event.location}</span>
+                </div>
+              </div>
+
+              {/* Dedicated Share Box inside the About Event Card */}
+              <div className="mt-4 rounded-xl border border-gray-200/90 bg-gradient-to-b from-[#faf9fc] to-white p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-100 text-[#d1410c]">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                      </svg>
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-wider text-gray-900">Public Event Link</span>
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-500">Promote to drive ticket sales</span>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="text"
+                    readOnly
+                    value={publicEventUrl}
+                    className="h-10 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-inner select-all truncate focus:outline-none"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    type="button"
+                    className={`h-10 px-4 rounded-xl text-xs font-black transition flex items-center gap-1.5 shrink-0 shadow-sm ${
+                      copied 
+                        ? "bg-emerald-600 text-white" 
+                        : "bg-[#d1410c] text-white hover:bg-[#b03507] active:scale-95"
+                    }`}
+                  >
+                    {copied ? (
+                      <>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copy Link
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-150">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-1">Share via:</span>
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out ${event.title} on Swyft: ${publicEventUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366]/10 text-[#075E54] hover:bg-[#25D366]/20 transition text-[11px] font-bold no-underline border border-[#25D366]/20"
+                  >
+                    <span>💬</span> WhatsApp
+                  </a>
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Get tickets for ${event.title}`)}&url=${encodeURIComponent(publicEventUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/5 text-gray-900 hover:bg-black/10 transition text-[11px] font-bold no-underline border border-gray-200"
+                  >
+                    <span className="text-xs font-black">𝕏</span> Post
+                  </a>
+                  <Link
+                    href={publicEventUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-50 text-[#d1410c] hover:bg-orange-100 transition text-[11px] font-bold no-underline border border-orange-200/60 ml-auto"
+                  >
+                    View Live Page &rarr;
+                  </Link>
                 </div>
               </div>
             </div>
