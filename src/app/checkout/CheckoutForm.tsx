@@ -280,7 +280,6 @@ export default function CheckoutForm() {
                     { label: 'Full Name', key: 'name', type: 'text', placeholder: 'e.g. Ayomide Adekunle', required: true },
                     { label: 'Email Address', key: 'email', type: 'email', placeholder: 'you@student.oouagoiwoye.edu.ng', required: true },
                     { label: 'Phone Number', key: 'phone', type: 'tel', placeholder: '080XXXXXXXX', required: true },
-                    { label: 'Matric Number (optional)', key: 'matric', type: 'text', placeholder: 'FOS/19/20/0001', required: false },
                   ].map(({ label, key, type, placeholder }) => (
                     <div key={key}>
                       <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</label>

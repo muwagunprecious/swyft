@@ -179,20 +179,6 @@ export default function RegisterPage() {
               </select>
             </div>
 
-            {role === "STUDENT" && (
-              <div>
-                <label className="block text-[13px] font-semibold text-[#39364f] mb-1.5">
-                  Matriculation Number <span className="text-[12px] font-normal text-[#6f7287]">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.matric}
-                  onChange={(e) => setForm({ ...form, matric: e.target.value })}
-                  placeholder="e.g. 210102010"
-                  className="w-full h-11 px-3.5 rounded border border-[#dddae3] text-[14px] text-[#39364f] outline-none focus:border-[#39364f]"
-                />
-              </div>
-            )}
 
             <div>
               <label className="block text-[13px] font-semibold text-[#39364f] mb-1.5">
