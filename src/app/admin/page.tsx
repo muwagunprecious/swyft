@@ -254,6 +254,22 @@ export default function AdminConsole() {
     }
   };
 
+  const handleRejectPayout = async (targetPayoutId: string) => {
+    try {
+      const res = await api.post(`/admin/payouts/${targetPayoutId}/reject`);
+      showToast(res.data.message || "Payout request rejected.", "success");
+      loadData();
+      if (inspectItem.show && inspectItem.type === "payout" && inspectItem.data.id === targetPayoutId) {
+        setInspectItem((prev) => ({
+          ...prev,
+          data: { ...prev.data, status: "REJECTED" },
+        }));
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.message || "Failed to reject payout.", "error");
+    }
+  };
+
   // Lists filtering
   const filteredUsers = users.filter(
     (u) =>
@@ -619,12 +635,15 @@ export default function AdminConsole() {
 
                     <div className="grid gap-3 p-4 rounded-2xl bg-white border border-slate-200 text-xs font-semibold">
                       {[
-                        { label: "Payout ID", val: inspectItem.data.id, mono: true },
-                        { label: "Event ID", val: inspectItem.data.eventId, mono: true },
+                        { label: "Payout Reference", val: inspectItem.data.reference || inspectItem.data.id, mono: true },
                         { label: "Organizer Name", val: inspectItem.data.organizerName },
-                        { label: "Organizer ID", val: inspectItem.data.organizerId, mono: true },
+                        { label: "Organizer Email", val: inspectItem.data.organizerEmail || "N/A" },
+                        { label: "Organizer Phone", val: inspectItem.data.organizerPhone || "N/A" },
+                        { label: "Settlement Bank", val: inspectItem.data.bankName },
+                        { label: "Account Number", val: inspectItem.data.accountNumber, mono: true },
+                        { label: "Account Name", val: inspectItem.data.accountName },
                         { label: "Request Status", val: inspectItem.data.status },
-                        { label: "Creation Date", val: inspectItem.data.createdAt ? new Date(inspectItem.data.createdAt).toLocaleString() : "N/A" },
+                        { label: "Requested On", val: inspectItem.data.createdAt ? new Date(inspectItem.data.createdAt).toLocaleString() : "N/A" },
                       ].map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
                           <span className="text-slate-400">{item.label}</span>
@@ -636,21 +655,36 @@ export default function AdminConsole() {
                     </div>
 
                     {inspectItem.data.status === "PENDING" && (
-                      <div className="pt-4 border-t border-slate-200">
+                      <div className="pt-4 border-t border-slate-200 flex flex-col gap-2">
                         <button
                           id={`inspect-release-${inspectItem.data.id}`}
                           onClick={() => {
                             triggerConfirm(
-                              `Confirm Payout Release`,
-                              `Are you sure you want to release this payout of ${formatNaira(inspectItem.data.amount)} to organizer ${inspectItem.data.organizerName}?`,
+                              `Confirm Payout Approval`,
+                              `Authorize and release this payout of ${formatNaira(inspectItem.data.amount)} to organizer ${inspectItem.data.organizerName} (${inspectItem.data.bankName} - ${inspectItem.data.accountNumber})?`,
                               () => handleReleasePayout(inspectItem.data.id),
-                              "Confirm Release",
+                              "Approve & Release",
                               "success"
                             );
                           }}
-                          className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 py-3 text-xs font-black text-slate-950 transition-all active:scale-95 shadow-lg shadow-emerald-500/10"
+                          className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 text-xs font-black text-white transition-all active:scale-95 shadow-lg shadow-emerald-500/10"
                         >
                           Approve & Release Funds
+                        </button>
+                        <button
+                          id={`inspect-reject-${inspectItem.data.id}`}
+                          onClick={() => {
+                            triggerConfirm(
+                              `Reject Withdrawal Request`,
+                              `Decline this withdrawal request of ${formatNaira(inspectItem.data.amount)} from ${inspectItem.data.organizerName}? The funds will return to their available balance.`,
+                              () => handleRejectPayout(inspectItem.data.id),
+                              "Reject Request",
+                              "danger"
+                            );
+                          }}
+                          className="w-full rounded-xl bg-red-50 hover:bg-red-100 py-2.5 text-xs font-black text-red-600 transition-all active:scale-95"
+                        >
+                          Decline Request
                         </button>
                       </div>
                     )}
@@ -1108,9 +1142,10 @@ export default function AdminConsole() {
                     <table className="w-full border-collapse text-left text-xs">
                       <thead>
                         <tr className="border-b border-slate-200 bg-white text-slate-400 font-bold">
-                          <th className="px-6 py-4">Event</th>
                           <th className="px-6 py-4">Organizer</th>
+                          <th className="px-6 py-4">Settlement Bank</th>
                           <th className="px-6 py-4">Amount</th>
+                          <th className="px-6 py-4">Date</th>
                           <th className="px-6 py-4">Status</th>
                           <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -1120,43 +1155,77 @@ export default function AdminConsole() {
                           filteredPayouts.map((p) => (
                             <tr
                               key={p.id}
-                              className="hover:bg-white transition-all cursor-pointer"
+                              className="hover:bg-slate-50/50 transition-all cursor-pointer"
                               onClick={() => setInspectItem({ show: true, type: "payout", data: p })}
                             >
-                              <td className="px-6 py-4 font-black text-slate-900">{p.eventTitle}</td>
-                              <td className="px-6 py-4 text-slate-700">{p.organizerName}</td>
-                              <td className="px-6 py-4 font-black text-slate-900 text-xs">{formatNaira(p.amount)}</td>
                               <td className="px-6 py-4">
-                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${p.status === "COMPLETED" ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
-                                  {p.status}
+                                <p className="font-black text-slate-900">{p.organizerName || p.accountName || 'Organizer'}</p>
+                                <p className="text-[11px] text-slate-400">{p.organizerEmail || '—'}</p>
+                              </td>
+                              <td className="px-6 py-4">
+                                <p className="font-bold text-slate-800">{p.bankName || 'Bank'}</p>
+                                <p className="text-[11px] font-mono text-slate-500">{p.accountNumber} · {p.accountName}</p>
+                              </td>
+                              <td className="px-6 py-4 font-black text-slate-900 text-xs">{formatNaira(p.amount)}</td>
+                              <td className="px-6 py-4 text-[11px] text-slate-500">
+                                {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                  p.status === "COMPLETED"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : p.status === "PENDING"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}>
+                                  {p.status === "COMPLETED" ? "APPROVED" : p.status}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                 {p.status === "PENDING" ? (
-                                  <button
-                                    id={`release-btn-${p.id}`}
-                                    onClick={() => {
-                                      triggerConfirm(
-                                        "Confirm Payout Approval",
-                                        `Authorize transfer of ${formatNaira(p.amount)} to organizer ${p.organizerName}?`,
-                                        () => handleReleasePayout(p.id),
-                                        "Release Payout",
-                                        "success"
-                                      );
-                                    }}
-                                    className="rounded-lg bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 text-[10px] font-black text-slate-950 transition-all shadow-md active:scale-95"
-                                  >
-                                    Release Payout
-                                  </button>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      id={`release-btn-${p.id}`}
+                                      onClick={() => {
+                                        triggerConfirm(
+                                          "Confirm Payout Approval",
+                                          `Authorize and approve withdrawal of ${formatNaira(p.amount)} to organizer ${p.organizerName} (${p.bankName} - ${p.accountNumber})?`,
+                                          () => handleReleasePayout(p.id),
+                                          "Approve Payout",
+                                          "success"
+                                        );
+                                      }}
+                                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-[10px] font-black text-white transition-all shadow-sm active:scale-95"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      id={`reject-btn-${p.id}`}
+                                      onClick={() => {
+                                        triggerConfirm(
+                                          "Reject Withdrawal",
+                                          `Decline this withdrawal of ${formatNaira(p.amount)} from ${p.organizerName}? Funds will return to their available wallet balance.`,
+                                          () => handleRejectPayout(p.id),
+                                          "Reject",
+                                          "danger"
+                                        );
+                                      }}
+                                      className="rounded-lg bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 text-[10px] font-black transition-all active:scale-95"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : p.status === "COMPLETED" ? (
+                                  <span className="text-[10px] text-emerald-600 font-bold">Approved ✓</span>
                                 ) : (
-                                  <span className="text-[10px] text-slate-400 font-bold">Cleared ✓</span>
+                                  <span className="text-[10px] text-red-500 font-bold">Rejected ✗</span>
                                 )}
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={5} className="text-center py-16 text-slate-400 font-bold">No payouts matched.</td>
+                            <td colSpan={6} className="text-center py-16 text-slate-400 font-bold">No payouts matched.</td>
                           </tr>
                         )}
                       </tbody>

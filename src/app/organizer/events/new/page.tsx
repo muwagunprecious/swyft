@@ -41,6 +41,15 @@ export default function CreateEventPage() {
   // Submission States
   const [publishing, setPublishing] = useState(false);
   const [publishingError, setPublishingError] = useState("");
+  const [createdEvent, setCreatedEvent] = useState<{ title: string; url: string; slug: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    if (!createdEvent?.url) return;
+    navigator.clipboard.writeText(createdEvent.url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -133,7 +142,7 @@ export default function CreateEventPage() {
     });
 
     try {
-      await api.post("/events", {
+      const res = await api.post("/events", {
         title: title.trim(),
         description: description.trim(),
         bannerImage: bannerBase64 || preview || undefined,
@@ -144,8 +153,20 @@ export default function CreateEventPage() {
         status: isDraft ? "DRAFT" : "PUBLISHED"
       });
 
-      // Redirect back to events list
-      router.push("/organizer/events");
+      const eventData = res.data;
+      const slug = eventData?.slug || eventData?.id;
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const fullUrl = `${origin}/events/${slug}`;
+
+      if (isDraft) {
+        router.push("/organizer/events");
+      } else {
+        setCreatedEvent({
+          title: eventData?.title || title.trim(),
+          url: fullUrl,
+          slug,
+        });
+      }
     } catch (err: any) {
       console.error("Failed to publish event:", err);
       setPublishingError(err.response?.data?.message || "Failed to create event. Please try again.");
@@ -474,6 +495,109 @@ export default function CreateEventPage() {
 
         </div>
       </div>
+
+      {/* ── EVENT PUBLISHED MODAL (COPYABLE TITLE LINK) ── */}
+      {createdEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="flex w-full max-w-[500px] flex-col rounded-3xl bg-white p-7 shadow-2xl">
+            
+            {/* Header / Celebration Icon */}
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 border border-orange-100 text-[#d1410c]">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            </div>
+
+            <div className="text-center mb-6">
+              <span className="inline-block rounded-full bg-emerald-100 text-emerald-700 font-black text-[10px] uppercase tracking-wider px-3 py-1 mb-2">
+                Event is Live!
+              </span>
+              <h3 className="text-2xl font-black text-[#1a202c]">
+                {createdEvent.title}
+              </h3>
+              <p className="mt-1 text-sm font-semibold text-gray-500">
+                Your event has been published with a custom shareable link. Share it with your attendees to start selling tickets!
+              </p>
+            </div>
+
+            {/* Copyable Link Input */}
+            <div className="mb-6">
+              <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-gray-400">
+                Your Custom Event Link
+              </label>
+              <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-2 focus-within:border-[#d1410c] focus-within:ring-2 focus-within:ring-[#d1410c]/10">
+                <input
+                  type="text"
+                  readOnly
+                  value={createdEvent.url}
+                  className="w-full bg-transparent px-2 text-xs font-mono font-bold text-gray-700 outline-none select-all"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition-all ${
+                    copied
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
+                      : "bg-[#d1410c] hover:bg-[#b03507] text-white shadow-md shadow-orange-500/10"
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      Copy Link
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Share Buttons */}
+            <div className="mb-6">
+              <p className="mb-2 text-center text-xs font-bold text-gray-400">Share directly to:</p>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Get your tickets for ${createdEvent.title} on Swyft: ${createdEvent.url}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition no-underline"
+                >
+                  <span>💬</span> WhatsApp
+                </a>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Get your tickets for ${createdEvent.title} on Swyft!`)}&url=${encodeURIComponent(createdEvent.url)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50/50 py-2.5 text-xs font-bold text-sky-700 hover:bg-sky-100 transition no-underline"
+                >
+                  <span>🐦</span> X / Twitter
+                </a>
+              </div>
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="flex flex-col gap-2">
+              <Link
+                href={`/events/${createdEvent.slug}`}
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-gray-900 hover:bg-black text-sm font-black text-white transition no-underline"
+              >
+                View Live Event Page →
+              </Link>
+              <Link
+                href="/organizer/events"
+                className="flex h-11 w-full items-center justify-center rounded-2xl border border-gray-200 bg-white text-xs font-bold text-gray-600 hover:bg-gray-50 transition no-underline"
+              >
+                Go to My Events Dashboard
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,10 +7,11 @@ const banks = [
   "Access Bank", "First Bank", "GT Bank", "UBA", "Zenith Bank",
   "Kuda Bank", "OPay", "Palmpay", "Moniepoint", "Stanbic IBTC",
   "Sterling Bank", "FCMB", "Fidelity Bank", "Polaris Bank", "Union Bank",
+  "Wema Bank", "Ecobank", "Heritage Bank", "Providus Bank", "Unity Bank"
 ];
 
 const formatNaira = (n: number) =>
-  `₦${Math.abs(n).toLocaleString("en-NG")}`;
+  `₦${Math.abs(n || 0).toLocaleString("en-NG")}`;
 
 export default function WalletPage() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -20,103 +21,126 @@ export default function WalletPage() {
   const [accountName, setAccountName] = useState("");
   const [amount, setAmount] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [withdrawError, setWithdrawError] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [availableBalance, setAvailableBalance] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
+  const [totalPayouts, setTotalPayouts] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"sales" | "payouts">("sales");
+
+  const fetchWalletData = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/organizer/wallet');
+      if (res.data) {
+        setTotalEarnings(res.data.totalRevenue || 0);
+        setAvailableBalance(res.data.availableBalance || 0);
+        setPendingBalance(res.data.pendingWithdrawals || 0);
+        setTotalPayouts(res.data.withdrawnAmount || 0);
+        setTransactions(res.data.transactions || []);
+        setPayouts(res.data.payouts || []);
+
+        if (res.data.bankDetails) {
+          if (res.data.bankDetails.bankName && !bank) setBank(res.data.bankDetails.bankName);
+          if (res.data.bankDetails.accountNumber && !accountNumber) setAccountNumber(res.data.bankDetails.accountNumber);
+          if (res.data.bankDetails.accountName && !accountName) setAccountName(res.data.bankDetails.accountName);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch wallet data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchWalletData = async () => {
-      try {
-        const res = await api.get('/organizer/dashboard');
-        if (res.data) {
-          setTotalEarnings(res.data.stats?.revenue || 0);
-          
-          const salesData = res.data.sales || [];
-          const mappedTxns = salesData.map((s: any) => ({
-            id: s.id.substring(0, 8).toUpperCase(),
-            event: s.ticket.eventTitle || 'Ticket Sale',
-            type: 'Ticket Sale',
-            amount: s.ticket.price || 0,
-            qty: 1,
-            date: new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            status: s.status === 'Paid' ? 'settled' : 'pending'
-          }));
-          setTransactions(mappedTxns);
-        }
-      } catch (err) {
-        console.error('Failed to fetch wallet data', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchWalletData();
   }, []);
-
-  const availableBalance = totalEarnings;
-  const pendingBalance = 0;
-  const totalPayouts = 0;
 
   const handleVerify = () => {
     if (accountNumber.length !== 10) return;
     setVerifying(true);
     setTimeout(() => {
       setVerifying(false);
-      setAccountName("AYOMIDE ADEKUNLE");
-    }, 1400);
+      if (!accountName) {
+        setAccountName("VERIFIED ACCOUNT");
+      }
+    }, 800);
   };
 
   const handleRequestPayout = () => {
+    setWithdrawError("");
     setStep("confirm");
   };
 
-  const handleConfirm = () => {
-    setStep("success");
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    setWithdrawError("");
+    try {
+      await api.post('/organizer/withdraw', {
+        amount: parseFloat(amount),
+        bankName: bank,
+        accountNumber,
+        accountName,
+      });
+      setStep("success");
+      await fetchWalletData();
+    } catch (err: any) {
+      console.error('Withdrawal failed:', err);
+      setWithdrawError(err.response?.data?.message || 'Failed to submit withdrawal request. Please check your balance and try again.');
+      setStep("form");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetModal = () => {
     setShowPayoutModal(false);
     setStep("form");
-    setBank("");
-    setAccountNumber("");
-    setAccountName("");
     setAmount("");
+    setWithdrawError("");
     setVerifying(false);
   };
 
   return (
     <div className="min-h-full bg-[#F2F3F5]">
-      <div className="mx-auto max-w-[900px] px-6 py-8">
+      <div className="mx-auto max-w-[960px] px-6 py-8">
 
         {/* HEADER */}
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-[#9333ea]">My Wallet</p>
-            <h1 className="text-2xl font-black text-[#1a202c]">Earnings & Payouts</h1>
-            <p className="mt-1 text-[13px] font-semibold text-gray-400">All revenue from your events in one place.</p>
+            <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-[#d1410c]">My Wallet</p>
+            <h1 className="text-2xl font-black text-[#1a202c]">Earnings & Withdrawals</h1>
+            <p className="mt-1 text-[13px] font-semibold text-gray-500">Real-time balances calculated solely from successful ticket transactions.</p>
           </div>
           <button
             onClick={() => setShowPayoutModal(true)}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-[#9333ea] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#7e22ce]"
+            disabled={availableBalance < 500}
+            className="flex shrink-0 items-center gap-2 rounded-full bg-[#d1410c] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#b03507] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
-            Request Payout
+            Withdraw Funds
           </button>
         </div>
 
         {/* BALANCE CARDS */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "Total Earnings", value: totalEarnings, color: "#9333ea", bg: "#faf5ff", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { label: "Available Balance", value: availableBalance, color: "#12B76A", bg: "#f0fdf4", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { label: "Pending Clearance", value: pendingBalance, color: "#f59e0b", bg: "#fffbeb", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { label: "Total Paid Out", value: totalPayouts, color: "#3b82f6", bg: "#eff6ff", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
+            { label: "Total Ticket Sales", value: totalEarnings, color: "#39364f", bg: "#f3f4f6", sub: "Only successful orders", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Available Balance", value: availableBalance, color: "#12B76A", bg: "#f0fdf4", sub: "Ready for withdrawal", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Pending Approvals", value: pendingBalance, color: "#f59e0b", bg: "#fffbeb", sub: "Under admin review", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Total Withdrawn", value: totalPayouts, color: "#d1410c", bg: "#fff9f6", sub: "Approved & released", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
           ].map((card) => (
             <div key={card.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">{card.label}</p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{card.label}</p>
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: card.bg }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={card.color} strokeWidth="1.8">
                     <path d={card.icon} />
@@ -124,86 +148,165 @@ export default function WalletPage() {
                 </div>
               </div>
               <p className="text-2xl font-black text-[#1a202c]">{formatNaira(card.value)}</p>
+              <p className="mt-1 text-[11px] font-medium text-gray-400">{card.sub}</p>
             </div>
           ))}
         </div>
 
         {/* NOTICE BANNER */}
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" className="mt-0.5 shrink-0">
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50/60 px-4 py-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d1410c" strokeWidth="2" className="mt-0.5 shrink-0">
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <p className="text-[13px] font-semibold text-amber-700">
-            Available balance is cleared within <strong>24–48 hours</strong> of requesting a payout. Pending balance clears after event date.
+          <p className="text-[13px] font-semibold text-[#39364f]">
+            Withdrawal requests are submitted directly to the administrator for review. Once approved, the amount is deducted from your wallet balance and transferred to your bank account.
           </p>
         </div>
 
-        {/* TRANSACTION HISTORY */}
+        {/* TABS & LIST */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <div>
-              <h2 className="text-[14px] font-black text-[#1a202c]">Transaction History</h2>
-              <p className="mt-0.5 text-[12px] font-semibold text-gray-400">{transactions.length} transactions</p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setActiveTab("sales")}
+                className={`text-[13px] font-bold pb-1 transition-colors border-b-2 ${
+                  activeTab === "sales"
+                    ? "border-[#d1410c] text-[#d1410c]"
+                    : "border-transparent text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                Successful Ticket Sales ({transactions.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("payouts")}
+                className={`text-[13px] font-bold pb-1 transition-colors border-b-2 ${
+                  activeTab === "payouts"
+                    ? "border-[#d1410c] text-[#d1410c]"
+                    : "border-transparent text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                Withdrawal Requests ({payouts.length})
+              </button>
             </div>
-            <select className="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] font-bold text-gray-600 outline-none focus:border-[#9333ea]">
-              <option>All time</option>
-              <option>This month</option>
-              <option>Last 30 days</option>
-            </select>
+            <button
+              onClick={fetchWalletData}
+              className="text-[12px] font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  {["Transaction ID", "Event / Description", "Type", "Amount", "Date", "Status"].map((h) => (
-                    <th key={h} className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {transactions.map((tx) => (
-                  <tr key={tx.id} className="transition hover:bg-gray-50">
-                    <td className="px-5 py-4 text-[12px] font-bold text-gray-500">{tx.id}</td>
-                    <td className="px-5 py-4">
-                      <p className="text-[13px] font-bold text-[#1a202c]">{tx.event}</p>
-                      {tx.qty > 0 && <p className="text-[11px] font-semibold text-gray-400">{tx.qty}× ticket{tx.qty > 1 ? "s" : ""}</p>}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        tx.type === "Payout" ? "bg-blue-50 text-blue-600" :
-                        tx.type === "Donation" ? "bg-amber-50 text-amber-600" :
-                        "bg-purple-50 text-purple-600"
-                      }`}>
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`text-[14px] font-black ${tx.amount < 0 ? "text-red-500" : "text-[#12B76A]"}`}>
-                        {tx.amount < 0 ? "-" : "+"}{formatNaira(tx.amount)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-[12px] font-semibold text-gray-500">{tx.date}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
-                        tx.status === "settled" ? "bg-green-50 text-green-600" :
-                        tx.status === "pending" ? "bg-amber-50 text-amber-600" :
-                        "bg-blue-50 text-blue-600"
-                      }`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${
-                          tx.status === "settled" ? "bg-green-500" :
-                          tx.status === "pending" ? "bg-amber-500" :
-                          "bg-blue-500"
-                        }`} />
-                        {tx.status}
-                      </span>
-                    </td>
+          {/* TAB 1: SALES TABLE */}
+          {activeTab === "sales" && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    {["Order / Attendee", "Event", "Ticket Tier", "Quantity", "Amount", "Date", "Status"].map((h) => (
+                      <th key={h} className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {transactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-sm font-semibold text-gray-400">
+                        No ticket sales recorded yet. Once attendees purchase tickets, revenue will appear here.
+                      </td>
+                    </tr>
+                  ) : (
+                    transactions.map((tx) => (
+                      <tr key={tx.id} className="transition hover:bg-gray-50">
+                        <td className="px-5 py-4">
+                          <p className="text-[13px] font-bold text-[#1a202c]">{tx.customer}</p>
+                          <p className="text-[11px] font-mono text-gray-400">#{tx.id.slice(0, 8)}</p>
+                        </td>
+                        <td className="px-5 py-4 text-[13px] font-bold text-[#1a202c]">{tx.event}</td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-bold text-[#d1410c]">
+                            {tx.ticketType}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[13px] font-bold text-gray-700">{tx.quantity}</td>
+                        <td className="px-5 py-4 text-[14px] font-black text-[#12B76A]">
+                          +{formatNaira(tx.amount)}
+                        </td>
+                        <td className="px-5 py-4 text-[12px] font-semibold text-gray-500">
+                          {tx.date ? new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-green-50 text-green-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                            Successful
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* TAB 2: PAYOUTS TABLE */}
+          {activeTab === "payouts" && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    {["Reference", "Bank Details", "Amount", "Requested Date", "Status"].map((h) => (
+                      <th key={h} className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {payouts.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-sm font-semibold text-gray-400">
+                        No withdrawal requests yet. You can request a payout anytime your available balance is at least ₦500.
+                      </td>
+                    </tr>
+                  ) : (
+                    payouts.map((p) => {
+                      const isPending = p.status === "PENDING";
+                      const isCompleted = p.status === "COMPLETED";
+                      return (
+                        <tr key={p.id} className="transition hover:bg-gray-50">
+                          <td className="px-5 py-4 font-mono text-[12px] font-bold text-gray-600">{p.reference || p.id.slice(0, 8)}</td>
+                          <td className="px-5 py-4">
+                            <p className="text-[13px] font-bold text-[#1a202c]">{p.bankName}</p>
+                            <p className="text-[12px] font-semibold text-gray-500">{p.accountNumber} · {p.accountName}</p>
+                          </td>
+                          <td className="px-5 py-4 text-[14px] font-black text-[#1a202c]">
+                            {formatNaira(p.amount)}
+                          </td>
+                          <td className="px-5 py-4 text-[12px] font-semibold text-gray-500">
+                            {new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                              isCompleted
+                                ? "bg-green-50 text-green-700"
+                                : isPending
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-red-50 text-red-700"
+                            }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                isCompleted ? "bg-green-500" : isPending ? "bg-amber-500" : "bg-red-500"
+                              }`} />
+                              {isCompleted ? "Approved & Paid" : isPending ? "Pending Admin Approval" : "Declined"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -213,17 +316,18 @@ export default function WalletPage() {
       {showPayoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={resetModal}>
           <div
-            className="flex w-full max-w-[480px] flex-col rounded-2xl bg-white shadow-2xl" style={{ maxHeight: "90vh" }}
+            className="flex w-full max-w-[480px] flex-col rounded-2xl bg-white shadow-2xl overflow-hidden"
+            style={{ maxHeight: "90vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
               <div>
                 <h2 className="text-[16px] font-black text-[#1a202c]">
-                  {step === "success" ? "Payout Requested! 🎉" : "Request Payout"}
+                  {step === "success" ? "Withdrawal Submitted! 🎉" : "Request Withdrawal"}
                 </h2>
-                <p className="mt-0.5 text-[12px] font-semibold text-gray-400">
-                  {step === "success" ? "We'll process it within 24–48 hours" : `Available: ${formatNaira(availableBalance)}`}
+                <p className="mt-0.5 text-[12px] font-semibold text-gray-500">
+                  {step === "success" ? "Your request has been routed to the administrator." : `Available: ${formatNaira(availableBalance)}`}
                 </p>
               </div>
               <button onClick={resetModal} className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition hover:bg-gray-100">
@@ -231,13 +335,19 @@ export default function WalletPage() {
               </button>
             </div>
 
+            {withdrawError && (
+              <div className="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-[13px] font-semibold text-red-600">
+                ⚠️ {withdrawError}
+              </div>
+            )}
+
             {/* STEP: FORM */}
             {step === "form" && (
-              <div className="flex flex-col gap-5 overflow-y-auto px-6 py-6" style={{ scrollbarWidth: "thin" }}>
+              <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">
 
                 {/* Amount */}
                 <div>
-                  <label className="mb-2 block text-[13px] font-bold text-[#1a202c]">Amount to Withdraw</label>
+                  <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">Amount to Withdraw</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[14px] font-bold text-gray-400">₦</span>
                     <input
@@ -246,18 +356,18 @@ export default function WalletPage() {
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       max={availableBalance}
-                      className="h-12 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] pl-8 pr-4 text-[14px] font-bold text-[#1a202c] outline-none transition focus:border-[#9333ea] focus:ring-2 focus:ring-[#9333ea]/20"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] pl-8 pr-4 text-[14px] font-bold text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20"
                     />
                   </div>
                   <div className="mt-1.5 flex gap-2">
-                    {[10000, 25000, 50000].map((q) => (
+                    {[5000, 10000, 25000, 50000].map((q) => (
                       <button key={q} onClick={() => setAmount(String(Math.min(q, availableBalance)))}
-                        className="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-bold text-gray-500 transition hover:border-[#9333ea] hover:text-[#9333ea]">
+                        className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-bold text-gray-600 transition hover:border-[#d1410c] hover:text-[#d1410c]">
                         ₦{q.toLocaleString()}
                       </button>
                     ))}
                     <button onClick={() => setAmount(String(availableBalance))}
-                      className="rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-bold text-gray-500 transition hover:border-[#9333ea] hover:text-[#9333ea]">
+                      className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-bold text-gray-600 transition hover:border-[#d1410c] hover:text-[#d1410c]">
                       Max
                     </button>
                   </div>
@@ -265,20 +375,20 @@ export default function WalletPage() {
 
                 {/* Bank */}
                 <div>
-                  <label className="mb-2 block text-[13px] font-bold text-[#1a202c]">Bank</label>
+                  <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">Settlement Bank</label>
                   <select
                     value={bank}
-                    onChange={(e) => { setBank(e.target.value); setAccountName(""); }}
-                    className="h-12 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-medium text-[#1a202c] outline-none transition focus:border-[#9333ea] focus:ring-2 focus:ring-[#9333ea]/20"
+                    onChange={(e) => setBank(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-medium text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20"
                   >
-                    <option value="">Select your bank</option>
+                    <option value="">Select your bank...</option>
                     {banks.map((b) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
 
                 {/* Account Number */}
                 <div>
-                  <label className="mb-2 block text-[13px] font-bold text-[#1a202c]">Account Number</label>
+                  <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">Account Number</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -289,60 +399,45 @@ export default function WalletPage() {
                       onChange={(e) => {
                         const v = e.target.value.replace(/\D/g, "").slice(0, 10);
                         setAccountNumber(v);
-                        setAccountName("");
                       }}
-                      className="h-12 flex-1 rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-bold tracking-widest text-[#1a202c] outline-none transition focus:border-[#9333ea] focus:ring-2 focus:ring-[#9333ea]/20 placeholder:text-gray-300 placeholder:tracking-normal placeholder:font-medium"
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-bold tracking-widest text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20 placeholder:text-gray-300 placeholder:tracking-normal placeholder:font-medium"
                     />
                     <button
                       onClick={handleVerify}
                       disabled={accountNumber.length !== 10 || !bank || verifying}
-                      className="flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-[#9333ea] px-4 text-[13px] font-bold text-white transition hover:bg-[#7e22ce] disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-gray-900 px-4 text-[13px] font-bold text-white transition hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {verifying ? (
-                        <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" strokeLinecap="round" /></svg>
-                      ) : "Verify"}
+                      {verifying ? "Checking..." : "Verify"}
                     </button>
                   </div>
-
-                  {/* Verified badge */}
-                  {accountName && (
-                    <div className="mt-2 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#12B76A" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
-                      <span className="text-[12px] font-black tracking-wide text-[#12B76A]">{accountName}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Account Name */}
                 <div>
-                  <label className="mb-2 block text-[13px] font-bold text-[#1a202c]">
+                  <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">
                     Account Name
-                    <span className="ml-2 text-[11px] font-semibold text-gray-400">(as it appears on your bank account)</span>
+                    <span className="ml-2 text-[11px] font-semibold text-gray-400">(as shown on bank account)</span>
                   </label>
                   <input
                     type="text"
                     placeholder="e.g. AYOMIDE ADEKUNLE"
                     value={accountName}
                     onChange={(e) => setAccountName(e.target.value.toUpperCase())}
-                    className="h-12 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-bold uppercase tracking-wide text-[#1a202c] outline-none transition focus:border-[#9333ea] focus:ring-2 focus:ring-[#9333ea]/20 placeholder:text-gray-300 placeholder:normal-case placeholder:tracking-normal placeholder:font-medium"
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-bold uppercase tracking-wide text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20 placeholder:text-gray-300 placeholder:normal-case placeholder:tracking-normal placeholder:font-medium"
                   />
-                  <p className="mt-1.5 text-[11px] font-semibold text-gray-400">
-                    Make sure this matches your bank records exactly to avoid failed transfers.
-                  </p>
                 </div>
-
 
                 {/* CTA */}
                 <button
                   onClick={handleRequestPayout}
-                  disabled={!accountName || !amount || Number(amount) <= 0 || Number(amount) > availableBalance}
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-[#9333ea] text-[14px] font-bold text-white transition hover:bg-[#7e22ce] disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={!accountName || !bank || !accountNumber || !amount || Number(amount) < 500 || Number(amount) > availableBalance}
+                  className="flex h-11 w-full items-center justify-center rounded-full bg-[#d1410c] text-[14px] font-bold text-white transition hover:bg-[#b03507] disabled:opacity-40 disabled:cursor-not-allowed mt-2"
                 >
-                  Continue →
+                  Review Request →
                 </button>
 
                 <p className="text-center text-[11px] font-semibold text-gray-400">
-                  SWYFT charges <strong>0%</strong> payout fee. Your bank may charge a transfer fee.
+                  Withdrawal requests are reviewed and approved directly by the administrator.
                 </p>
               </div>
             )}
@@ -352,7 +447,7 @@ export default function WalletPage() {
               <div className="overflow-y-auto px-6 py-6">
                 <div className="mb-5 rounded-xl bg-[#F7F8FA] p-5 flex flex-col gap-3">
                   {[
-                    ["Withdraw amount", formatNaira(Number(amount))],
+                    ["Withdrawal amount", formatNaira(Number(amount))],
                     ["Bank", bank],
                     ["Account number", accountNumber],
                     ["Account name", accountName],
@@ -363,17 +458,23 @@ export default function WalletPage() {
                     </div>
                   ))}
                   <div className="border-t border-gray-200 pt-3 flex items-center justify-between">
-                    <span className="text-[12px] font-semibold text-gray-400">You will receive</span>
-                    <span className="text-[16px] font-black text-[#9333ea]">{formatNaira(Number(amount))}</span>
+                    <span className="text-[12px] font-semibold text-gray-400">Total to Receive</span>
+                    <span className="text-[16px] font-black text-[#d1410c]">{formatNaira(Number(amount))}</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3">
-                  <button onClick={handleConfirm}
-                    className="flex h-12 w-full items-center justify-center rounded-full bg-[#9333ea] text-[14px] font-bold text-white transition hover:bg-[#7e22ce]">
-                    Confirm & Submit
+                  <button
+                    onClick={handleConfirm}
+                    disabled={submitting}
+                    className="flex h-12 w-full items-center justify-center rounded-full bg-[#d1410c] text-[14px] font-bold text-white transition hover:bg-[#b03507] disabled:opacity-50"
+                  >
+                    {submitting ? "Submitting Request..." : "Confirm & Send to Admin"}
                   </button>
-                  <button onClick={() => setStep("form")}
-                    className="flex h-12 w-full items-center justify-center rounded-full border border-gray-200 text-[14px] font-bold text-gray-600 transition hover:bg-gray-50">
+                  <button
+                    onClick={() => setStep("form")}
+                    disabled={submitting}
+                    className="flex h-12 w-full items-center justify-center rounded-full border border-gray-200 text-[14px] font-bold text-gray-600 transition hover:bg-gray-50"
+                  >
                     ← Edit Details
                   </button>
                 </div>
@@ -388,12 +489,14 @@ export default function WalletPage() {
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </div>
-                <h3 className="mb-2 text-xl font-black text-[#1a202c]">{formatNaira(Number(amount))} requested</h3>
-                <p className="mb-1 text-[13px] font-semibold text-gray-500">to <strong>{accountName}</strong> · {bank}</p>
-                <p className="mb-6 text-[12px] font-semibold text-gray-400">Account {accountNumber} · Processed in 24–48 hrs</p>
-                <button onClick={resetModal}
-                  className="flex h-11 w-full items-center justify-center rounded-full bg-[#9333ea] text-[14px] font-bold text-white transition hover:bg-[#7e22ce]">
-                  Done
+                <h3 className="mb-2 text-xl font-black text-[#1a202c]">{formatNaira(Number(amount))} Submitted!</h3>
+                <p className="mb-1 text-[13px] font-semibold text-gray-600">Your withdrawal request has been sent to the admin dashboard.</p>
+                <p className="mb-6 text-[12px] font-semibold text-gray-400">To <strong>{accountName}</strong> ({bank} - {accountNumber}). Once approved, funds will be released to your account.</p>
+                <button
+                  onClick={resetModal}
+                  className="flex h-11 w-full items-center justify-center rounded-full bg-[#d1410c] text-[14px] font-bold text-white transition hover:bg-[#b03507]"
+                >
+                  Return to Wallet
                 </button>
               </div>
             )}

@@ -9,6 +9,7 @@ import ShareButton from "@/components/events/ShareButton";
 
 interface ApiEvent {
   id: string;
+  slug?: string;
   title: string;
   description: string;
   bannerImage: string;
@@ -27,6 +28,7 @@ export default function EventDetailsPage() {
   const [event, setEvent] = useState<ApiEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -112,6 +114,38 @@ export default function EventDetailsPage() {
   }));
 
   const organizerName = typeof event.organizer === "object" ? event.organizer?.name : (event.organizer || "Event Organizer");
+  const eventSlugOrId = event.slug || event.id;
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const shareUrl = origin ? `${origin}/events/${eventSlugOrId}` : `/events/${eventSlugOrId}`;
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const handleNativeShare = () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      navigator.share({
+        title: event.title,
+        text: `Get your tickets for ${event.title}!`,
+        url: shareUrl,
+      }).catch(() => {
+        handleCopyLink();
+      });
+    } else {
+      handleCopyLink();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#faf9fc] text-[#1e0a3c] relative overflow-hidden pb-24">
@@ -134,7 +168,7 @@ export default function EventDetailsPage() {
           </Link>
 
           <div className="lg:hidden">
-            <ShareButton />
+            <ShareButton url={shareUrl} title={event.title} />
           </div>
         </div>
 
@@ -196,7 +230,7 @@ export default function EventDetailsPage() {
                 
                 {/* Micro-interactive Share button (Desktop Only) */}
                 <div className="hidden lg:block">
-                  <ShareButton />
+                  <ShareButton url={shareUrl} title={event.title} />
                 </div>
               </div>
 
@@ -285,6 +319,93 @@ export default function EventDetailsPage() {
                 subaccountCode={event.organizer?.subaccountCode}
                 tickets={tickets} 
               />
+
+              {/* Dedicated Share Box Around Ticket Box */}
+              <div className="mt-8 rounded-2xl border border-gray-200/90 bg-gradient-to-b from-[#faf9fc] to-white p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-[#d1410c]">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="18" cy="5" r="3"/>
+                        <circle cx="6" cy="12" r="3"/>
+                        <circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
+                        Share this Event
+                      </h4>
+                      <p className="text-[11px] font-medium text-gray-500">
+                        Spread the word with friends & followers
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Copyable clean title slug link */}
+                <div className="relative mb-3 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={shareUrl}
+                      className="w-full h-10 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-inner focus:outline-none select-all truncate"
+                    />
+                  </div>
+                  <button
+                    onClick={handleCopyLink}
+                    type="button"
+                    className={`h-10 px-4 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 shadow-sm ${
+                      copied 
+                        ? "bg-emerald-600 text-white" 
+                        : "bg-[#d1410c] text-white hover:bg-[#b03508] active:scale-95"
+                    }`}
+                  >
+                    {copied ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copy Link
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Quick Share Buttons */}
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-150">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-0.5">Quick Share:</span>
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out ${event.title} on Swyft: ${shareUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-[#25D366]/10 text-[#075E54] hover:bg-[#25D366]/20 transition text-[11px] font-bold no-underline border border-[#25D366]/20"
+                  >
+                    <span className="text-sm">💬</span> WhatsApp
+                  </a>
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Get tickets for ${event.title}`)}&url=${encodeURIComponent(shareUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-black/5 text-gray-900 hover:bg-black/10 transition text-[11px] font-bold no-underline border border-gray-200"
+                  >
+                    <span className="text-xs font-black">𝕏</span> Post
+                  </a>
+                  <button
+                    onClick={handleNativeShare}
+                    type="button"
+                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition text-[11px] font-bold border border-gray-200"
+                    title="More sharing options"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                  </button>
+                </div>
+              </div>
 
             </div>
 
