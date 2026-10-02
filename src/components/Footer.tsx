@@ -65,12 +65,23 @@ export default function Footer() {
               <ul className="space-y-2.5 p-0 m-0 list-none">
                 {items.map(([label, href]) => (
                   <li key={label}>
-                    <Link
-                      href={href}
-                      className="text-[13px] text-[#6f7287] hover:text-[#d1410c] no-underline transition-colors font-normal"
-                    >
-                      {label}
-                    </Link>
+                    {href.startsWith("http") ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[13px] text-[#6f7287] hover:text-[#d1410c] no-underline transition-colors font-normal"
+                      >
+                        {label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={href}
+                        className="text-[13px] text-[#6f7287] hover:text-[#d1410c] no-underline transition-colors font-normal"
+                      >
+                        {label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
