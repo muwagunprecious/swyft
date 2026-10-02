@@ -24,6 +24,11 @@ export default function WalletPage() {
   const [submitting, setSubmitting] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
 
+  // Settlement bank account modal state
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
+  const [bankModalMessage, setBankModalMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [availableBalance, setAvailableBalance] = useState(0);
@@ -80,6 +85,40 @@ export default function WalletPage() {
         setAccountName("VERIFIED ACCOUNT");
       }
     }, 800);
+  };
+
+  const handleSaveBankDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingBank(true);
+    setBankModalMessage(null);
+    const cleanAccount = accountNumber.replace(/\D/g, "");
+    if (cleanAccount.length !== 10) {
+      setBankModalMessage({ text: "Please enter a valid 10-digit account number.", type: "error" });
+      setSavingBank(false);
+      return;
+    }
+    if (!bank) {
+      setBankModalMessage({ text: "Please select a bank.", type: "error" });
+      setSavingBank(false);
+      return;
+    }
+    try {
+      await api.post('/organizer/bank-details', {
+        bankName: bank,
+        accountNumber: cleanAccount,
+        accountName,
+      });
+      setBankModalMessage({ text: "Settlement account details saved successfully!", type: "success" });
+      setTimeout(() => {
+        setShowBankModal(false);
+        setBankModalMessage(null);
+      }, 1200);
+      await fetchWalletData();
+    } catch (err: any) {
+      setBankModalMessage({ text: err.response?.data?.message || "Failed to save bank details.", type: "error" });
+    } finally {
+      setSavingBank(false);
+    }
   };
 
   const handleRequestPayout = () => {
@@ -195,6 +234,55 @@ export default function WalletPage() {
           <p className="text-[13px] font-semibold text-[#39364f]">
             Withdrawal requests are submitted directly to the administrator for review. Once approved, the amount is deducted from your wallet balance and transferred to your bank account.
           </p>
+        </div>
+
+        {/* SETTLEMENT BANK ACCOUNT CARD */}
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-[#d1410c]">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 3l9 7H3l9-7z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider">Settlement Bank Account</h3>
+                  {accountNumber ? (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                      ✓ Active
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                      Not Configured
+                    </span>
+                  )}
+                </div>
+                {accountNumber && bank ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-gray-600">
+                    <span><strong>Bank:</strong> {bank}</span>
+                    <span><strong>Account:</strong> <code className="font-mono text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded tracking-wider">{accountNumber}</code></span>
+                    {accountName && <span><strong>Name:</strong> {accountName}</span>}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs font-medium text-gray-500">
+                    Save your bank account so your withdrawal requests can be approved and transferred immediately.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowBankModal(true);
+                setBankModalMessage(null);
+              }}
+              type="button"
+              className="shrink-0 rounded-xl border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 px-4 py-2 text-xs font-bold text-gray-800 transition shadow-sm active:scale-95"
+            >
+              {accountNumber ? "Edit Bank Details" : "Add Bank Account"}
+            </button>
+          </div>
         </div>
 
         {/* TABS & LIST */}
@@ -551,6 +639,120 @@ export default function WalletPage() {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* SETTLEMENT BANK DETAILS MODAL */}
+      {/* ═══════════════════════════════════════════ */}
+      {showBankModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={() => setShowBankModal(false)}>
+          <div
+            className="flex w-full max-w-[460px] flex-col rounded-2xl bg-white shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <div>
+                <h2 className="text-[16px] font-black text-[#1a202c]">Settlement Bank Account</h2>
+                <p className="mt-0.5 text-[12px] font-semibold text-gray-500">
+                  Where your ticket sales and withdrawals will be sent.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBankModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition hover:bg-gray-100"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 p-6">
+              {bankModalMessage && (
+                <div className={`rounded-xl border p-3 text-[13px] font-semibold ${
+                  bankModalMessage.type === "success"
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : "border-red-200 bg-red-50 text-red-600"
+                }`}>
+                  {bankModalMessage.text}
+                </div>
+              )}
+
+              {/* Bank Selection */}
+              <div>
+                <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">Bank Name</label>
+                <select
+                  value={bank}
+                  onChange={(e) => setBank(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-medium text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20"
+                >
+                  <option value="">Select your bank...</option>
+                  {banks.map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+
+              {/* Account Number */}
+              <div>
+                <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">Account Number</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="10-digit account number"
+                    value={accountNumber}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setAccountNumber(v);
+                    }}
+                    className="h-11 flex-1 rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-bold tracking-widest text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20 placeholder:text-gray-300 placeholder:tracking-normal placeholder:font-medium"
+                  />
+                  <button
+                    onClick={handleVerify}
+                    type="button"
+                    disabled={accountNumber.length !== 10 || !bank || verifying}
+                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-gray-900 px-4 text-[13px] font-bold text-white transition hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {verifying ? "Checking..." : "Verify"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Account Name */}
+              <div>
+                <label className="mb-1.5 block text-[13px] font-bold text-[#1a202c]">
+                  Account Name
+                  <span className="ml-2 text-[11px] font-semibold text-gray-400">(as shown on bank account)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. AYOMIDE ADEKUNLE"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value.toUpperCase())}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-[#F7F8FA] px-4 text-[14px] font-bold uppercase tracking-wide text-[#1a202c] outline-none transition focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20 placeholder:text-gray-300 placeholder:normal-case placeholder:tracking-normal placeholder:font-medium"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBankModal(false)}
+                  className="h-11 flex-1 rounded-full border border-gray-200 text-[14px] font-bold text-gray-600 transition hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveBankDetails}
+                  disabled={savingBank || !bank || accountNumber.length !== 10 || !accountName.trim()}
+                  className="h-11 flex-1 rounded-full bg-[#d1410c] text-[14px] font-bold text-white transition hover:bg-[#b03507] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  {savingBank ? "Saving Details..." : "Save Bank Details"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
