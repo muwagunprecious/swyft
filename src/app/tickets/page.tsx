@@ -189,12 +189,21 @@ function TrackTicketContent() {
                     
                     {/* Functional QR code image */}
                     <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-gray-50 border border-gray-100 shrink-0">
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${t.id}&color=1e0a3c`} 
-                        alt="Ticket QR Code"
-                        className="w-[120px] h-[120px] object-contain rounded-md"
-                      />
+                      <a
+                        href={`https://swyft-ticket.name.ng/verify?code=${t.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Click or scan to verify ticket"
+                        className="group transition-transform hover:scale-105"
+                      >
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://swyft-ticket.name.ng/verify?code=${t.id}`)}&color=1e0a3c`} 
+                          alt="Ticket QR Code"
+                          className="w-[120px] h-[120px] object-contain rounded-md"
+                        />
+                      </a>
                       <code className="mt-2 text-[9px] font-black text-gray-500 tracking-wide select-all">{t.id}</code>
+                      <span className="mt-1 text-[9px] font-bold text-[#d1410c]">Scan or click to verify</span>
                     </div>
 
                     {/* Details */}
