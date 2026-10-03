@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import SendFreeTicketModal from '@/components/SendFreeTicketModal';
 
 export default function TicketingModule() {
   const [events, setEvents] = useState<any[]>([]);
@@ -9,6 +10,7 @@ export default function TicketingModule() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFreeTicketModalOpen, setIsFreeTicketModalOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   
   // New Ticket State
@@ -63,13 +65,24 @@ export default function TicketingModule() {
           <h2 className="text-xl font-black text-gray-900 tracking-tight">Ticketing Operations</h2>
           <p className="text-sm font-medium text-gray-500 mt-1">Manage ticket tiers, pricing, and availability across your events.</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center gap-2"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Create Ticket Tier
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={() => setIsFreeTicketModalOpen(true)}
+            className="bg-[#d1410c] hover:bg-[#b03507] text-white px-5 py-2 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            Send Free Ticket
+          </button>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold text-sm transition-colors shadow-sm flex items-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Ticket Tier
+          </button>
+        </div>
       </div>
 
       {/* ── TICKET OVERVIEW ───────────────────────────────────────── */}
@@ -251,6 +264,15 @@ export default function TicketingModule() {
           </div>
         </div>
       )}
+
+      {/* ── SEND FREE TICKET MODAL ─────────────────────────────────── */}
+      <SendFreeTicketModal
+        isOpen={isFreeTicketModalOpen}
+        onClose={() => setIsFreeTicketModalOpen(false)}
+        onSuccess={() => {
+          api.get('/organizer/events').then(res => setEvents(res.data)).catch(console.error);
+        }}
+      />
 
     </div>
   );

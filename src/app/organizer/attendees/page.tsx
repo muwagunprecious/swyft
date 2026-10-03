@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
+import SendFreeTicketModal from "@/components/SendFreeTicketModal";
 
 const allEvents = ["All Events", "OOU Campus Tech Summit 2026", "Faculty of Arts Dinner", "Hack The Campus Hackathon", "LASU Sports Festival"];
 const allStatuses = ["All", "checked-in", "not-checked-in"];
@@ -13,20 +14,22 @@ export default function AttendeesPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [mockAttendees, setMockAttendees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFreeTicketModalOpen, setIsFreeTicketModalOpen] = useState(false);
+
+  const fetchAttendees = useCallback(async () => {
+    try {
+      const res = await api.get('/organizer/attendees');
+      if (res.data) setMockAttendees(res.data);
+    } catch (err) {
+      console.error('Failed to fetch attendees', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchAttendees = async () => {
-      try {
-        const res = await api.get('/organizer/attendees');
-        if (res.data) setMockAttendees(res.data);
-      } catch (err) {
-        console.error('Failed to fetch attendees', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAttendees();
-  }, []);
+  }, [fetchAttendees]);
 
   const filtered = mockAttendees.filter((a) => {
     const matchSearch =
@@ -53,7 +56,17 @@ export default function AttendeesPage() {
             <h1 className="text-2xl font-black text-[#1a202c]">Ticket Buyers</h1>
             <p className="mt-1 text-[13px] font-semibold text-gray-400">Everyone who purchased a ticket across all your events.</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setIsFreeTicketModalOpen(true)}
+              className="flex items-center gap-2 rounded-full bg-[#d1410c] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#b03507]"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Send Free Ticket
+            </button>
             <Link
               href="/organizer/verification"
               className="flex items-center gap-2 rounded-full bg-[#9333ea] px-5 py-2.5 text-[13px] font-bold text-white no-underline shadow-sm transition hover:bg-[#7e22ce]"
@@ -194,6 +207,13 @@ export default function AttendeesPage() {
             </table>
           </div>
         </div>
+
+        {/* Send Free Ticket Modal */}
+        <SendFreeTicketModal
+          isOpen={isFreeTicketModalOpen}
+          onClose={() => setIsFreeTicketModalOpen(false)}
+          onSuccess={fetchAttendees}
+        />
 
       </div>
     </div>
