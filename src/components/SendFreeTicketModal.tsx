@@ -174,16 +174,15 @@ export default function SendFreeTicketModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in"
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl transition-all animate-in zoom-in-95 duration-200"
+        className="w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl transition-all animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: "90vh" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[#d1410c]">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
@@ -203,11 +202,11 @@ export default function SendFreeTicketModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto p-6">
+        {/* Scrollable Content Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {/* SUCCESS VIEW */}
           {issuedResult ? (
-            <div className="flex flex-col items-center py-4 text-center">
+            <div className="flex flex-col items-center py-2 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
                   <path d="M20 6L9 17l-5-5" />
@@ -225,22 +224,33 @@ export default function SendFreeTicketModal({
                 Delivered to <strong>{issuedResult.ticket?.attendeeEmail}</strong>
               </p>
 
-              <div className="my-5 w-full rounded-2xl bg-[#F8F9FA] border border-gray-200 p-4 text-left text-xs space-y-2">
-                <div className="flex justify-between">
+              <div className="my-5 w-full rounded-2xl bg-[#F8F9FA] border border-gray-200 p-4 text-left text-xs space-y-2.5">
+                <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-400">Event:</span>
                   <span className="font-bold text-[#1a202c] text-right">{issuedResult.ticket?.eventName}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-400">Ticket Tier:</span>
                   <span className="font-extrabold text-[#d1410c] uppercase">{issuedResult.ticket?.ticketType} (Complimentary)</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-400">Booking Reference:</span>
                   <span className="font-mono font-bold text-gray-700">{issuedResult.ticket?.reference}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="font-semibold text-gray-400">Verification Token:</span>
                   <span className="font-mono font-bold text-gray-700">{issuedResult.ticket?.qrCode}</span>
+                </div>
+                <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                  <span className="font-semibold text-gray-400">Live QR Verification:</span>
+                  <a
+                    href={`/verify?code=${encodeURIComponent(issuedResult.ticket?.qrCode)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-[#d1410c] hover:underline flex items-center gap-1"
+                  >
+                    Test Verification Scan &rarr;
+                  </a>
                 </div>
               </div>
 
@@ -287,9 +297,35 @@ export default function SendFreeTicketModal({
                   <div className="h-11 rounded-xl border border-gray-200 bg-gray-50 flex items-center px-4 text-xs font-semibold text-gray-400">
                     Loading your events...
                   </div>
+                ) : events.length === 0 ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span>⚠️</span> No events created yet
+                    </p>
+                    <p className="mt-1 text-amber-700 leading-relaxed">
+                      You need at least one upcoming event to issue tickets. Please create an event first.
+                    </p>
+                    <a
+                      href="/organizer/events"
+                      className="mt-3 inline-flex items-center gap-1 rounded-lg bg-[#d1410c] px-3.5 py-1.5 font-bold text-white shadow-xs transition hover:bg-[#b03507]"
+                    >
+                      + Create Event Now &rarr;
+                    </a>
+                  </div>
                 ) : activeEvents.length === 0 ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
-                    You don&apos;t have any active upcoming events. Tickets cannot be issued for events that have passed.
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span>⏳</span> All your events have passed
+                    </p>
+                    <p className="mt-1 text-amber-700 leading-relaxed">
+                      Complimentary passes can only be issued for upcoming active events. Please create a new upcoming event.
+                    </p>
+                    <a
+                      href="/organizer/events"
+                      className="mt-3 inline-flex items-center gap-1 rounded-lg bg-[#d1410c] px-3.5 py-1.5 font-bold text-white shadow-xs transition hover:bg-[#b03507]"
+                    >
+                      + Create Upcoming Event &rarr;
+                    </a>
                   </div>
                 ) : (
                   <select
