@@ -120,17 +120,42 @@ export default function OrganizerDashboard() {
       </div>
 
       {/* METRICS */}
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { 
-            label: "Gross Revenue", 
+            label: "Wallet Balance", 
+            value: formatNaira(typeof data.stats.walletBalance === "number" ? data.stats.walletBalance : Math.max(0, data.stats.revenue - (data.stats.withdrawnAmount || 0))), 
+            sub: "Available for withdrawal", 
+            colorClass: "bg-emerald-50 text-emerald-600 border border-emerald-200/50",
+            href: "/organizer/wallet",
+            actionLabel: "Withdraw →",
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+              </svg>
+            )
+          },
+          { 
+            label: "Gross Sales", 
             value: formatNaira(data.stats.revenue), 
-            sub: "Total ticket & voting sales", 
+            sub: "All-time ticket earnings", 
             colorClass: "bg-[#f05537]/10 text-[#f05537]",
             icon: (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="4" width="20" height="16" rx="2" />
                 <path d="M12 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z" />
+              </svg>
+            )
+          },
+          { 
+            label: "Total Withdrawn", 
+            value: formatNaira(data.stats.withdrawnAmount || 0), 
+            sub: "Approved & paid out", 
+            colorClass: "bg-purple-50 text-purple-600",
+            icon: (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             )
           },
@@ -144,29 +169,24 @@ export default function OrganizerDashboard() {
                 <path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
             )
-          },
-          { 
-            label: "Active Projects", 
-            value: data.stats.activeEvents.toLocaleString(), 
-            sub: "Live campus campaigns", 
-            colorClass: "bg-emerald-50 text-emerald-600",
-            icon: (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            )
           }
         ].map((m) => (
-          <div key={m.label} className="rounded-2xl border border-gray-150 bg-white p-6 shadow-sm transition hover:shadow-md">
+          <div key={m.label} className="relative rounded-2xl border border-gray-150 bg-white p-5 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">{m.label}</p>
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${m.colorClass}`}>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">{m.label}</p>
+              <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${m.colorClass}`}>
                 {m.icon}
               </div>
             </div>
-            <p className="mt-4 text-2xl font-black text-gray-900">{m.value}</p>
-            <p className="mt-1 text-xs font-semibold text-gray-400">{m.sub}</p>
+            <p className="mt-3 text-2xl font-black text-gray-900">{m.value}</p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-gray-400">{m.sub}</p>
+              {m.href && (
+                <Link href={m.href} className="text-[11px] font-extrabold text-emerald-600 hover:underline">
+                  {m.actionLabel}
+                </Link>
+              )}
+            </div>
           </div>
         ))}
       </div>

@@ -351,17 +351,24 @@ export default function WalletPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-[13px] font-bold text-gray-700">{tx.quantity}</td>
-                        <td className="px-5 py-4 text-[14px] font-black text-[#12B76A]">
-                          +{formatNaira(tx.amount)}
+                        <td className={`px-5 py-4 text-[14px] font-black ${tx.amount < 0 ? "text-[#d1410c]" : "text-[#12B76A]"}`}>
+                          {tx.amount < 0 ? `-${formatNaira(Math.abs(tx.amount))}` : `+${formatNaira(tx.amount)}`}
                         </td>
                         <td className="px-5 py-4 text-[12px] font-semibold text-gray-500">
                           {tx.date ? new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                         </td>
                         <td className="px-5 py-4">
-                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-green-50 text-green-700">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                            Successful
-                          </span>
+                          {tx.type === "debit" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-orange-50 text-[#d1410c]">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#d1410c]" />
+                              {tx.status || "Withdrawn"}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-green-50 text-green-700">
+                              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                              Successful
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))
