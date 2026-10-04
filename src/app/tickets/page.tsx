@@ -59,7 +59,7 @@ function TrackTicketContent() {
   }) : "N/A";
   
   const subtotal = tickets.reduce((acc, t) => acc + (t.price * (t.quantity || 1)), 0);
-  const serviceFee = Math.round(subtotal * 0.05);
+  const serviceFee = subtotal > 0 ? Math.round(subtotal * 0.04) + 20 : 0;
   const totalPaid = subtotal + serviceFee;
 
   return (
@@ -171,7 +171,7 @@ function TrackTicketContent() {
                       <span>₦{subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-500">
-                      <span>Service Fee (5%)</span>
+                      <span>Service Fee (4% + ₦20)</span>
                       <span>₦{serviceFee.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-950 border-t border-gray-200 pt-2 mt-1 text-sm font-black">

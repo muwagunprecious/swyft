@@ -84,7 +84,7 @@ function SuccessPageContent() {
   
   // Calculate subtotal from tickets in response
   const subtotal = tickets.reduce((acc, t) => acc + (t.price * (t.quantity || 1)), 0);
-  const serviceFee = Math.round(subtotal * 0.05);
+  const serviceFee = subtotal > 0 ? Math.round(subtotal * 0.04) + 20 : 0;
   const totalPaid = subtotal + serviceFee;
 
   return (
@@ -183,7 +183,7 @@ function SuccessPageContent() {
                   <span className="font-bold text-gray-800">₦{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-gray-500">Service Fee (5%)</span>
+                  <span className="font-semibold text-gray-500">Service Fee (4% + ₦20)</span>
                   <span className="font-bold text-gray-800">₦{serviceFee.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-base border-t border-gray-200 pt-3 mt-1">

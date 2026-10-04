@@ -144,9 +144,9 @@ export default function EventVotingPage() {
     }
   };
 
-  // Calculate Split Fees
+  // Calculate Split Fees (4% + ₦20)
   const subtotal = (event?.voteCost || 50) * paidVoteQty;
-  const fee = Math.round(subtotal * 0.05) + 100;
+  const fee = Math.round(subtotal * 0.04) + 20;
   const total = subtotal + fee;
   const subaccountCode = event?.organizer?.subaccountCode;
 
@@ -358,12 +358,12 @@ export default function EventVotingPage() {
               </div>
               <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
                 <span>Service Fee</span>
-                <span>{formatNaira(Math.round(((event.voteCost || 50) * paidVoteQty) * 0.05) + 100)}</span>
+                <span>{formatNaira(Math.round(((event.voteCost || 50) * paidVoteQty) * 0.04) + 20)}</span>
               </div>
               <div className="flex items-center justify-between font-black text-gray-900 text-sm border-t border-gray-100 pt-2">
                 <span>Grand Total</span>
                 <span className="text-[#f05537]">
-                  {formatNaira(((event.voteCost || 50) * paidVoteQty) + Math.round(((event.voteCost || 50) * paidVoteQty) * 0.05) + 100)}
+                  {formatNaira(((event.voteCost || 50) * paidVoteQty) + Math.round(((event.voteCost || 50) * paidVoteQty) * 0.04) + 20)}
                 </span>
               </div>
             </div>

@@ -78,8 +78,8 @@ export default function CheckoutForm() {
      const qty = Number(item.qty) || 0;
      return acc + (price * qty);
    }, 0);
-  // OTIX Platform Fee: 5% + ₦100
-  const fee = Math.round(subtotal * 0.05) + 100;
+  // OTIX Platform Fee: 4% + ₦20
+  const fee = Math.round(subtotal * 0.04) + 20;
   const total = subtotal + fee;
 
   // Retrieve subaccount code from the first cart item (all items belong to the same event)

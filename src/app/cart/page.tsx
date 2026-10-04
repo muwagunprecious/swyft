@@ -34,7 +34,7 @@ export default function Cart() {
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
   const subtotal = items.reduce((acc, i) => acc + i.price * i.qty, 0);
-  const fee = Math.round(subtotal * 0.05);
+  const fee = subtotal > 0 ? Math.round(subtotal * 0.04) + 20 : 0;
   const discount = promoApplied ? -1000 : 0;
   const total = subtotal + fee + discount;
 
@@ -99,7 +99,7 @@ export default function Cart() {
                 <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {[
                     { label: 'Subtotal', value: `₦${subtotal.toLocaleString()}` },
-                    { label: 'Service Fee (5%)', value: `₦${fee.toLocaleString()}` },
+                    { label: 'Service Fee (4% + ₦20)', value: `₦${fee.toLocaleString()}` },
                     ...(promoApplied ? [{ label: 'Promo (WELCOME)', value: '–₦1,000', green: true }] : []),
                   ].map((row) => (
                     <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
