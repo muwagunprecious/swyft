@@ -1,25 +1,26 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import LayoutWrapper from "@/components/LayoutWrapper";
 
-const outfit = Outfit({ 
+const geistSans = Geist({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-geist-sans",
+  weight: ["200", "300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "SWYFT - Campus Events, Voting, Dues and Fundraising",
+  title: "SWYFT - Curated Events & Ticketing",
   description:
-    "Africa's modern operating system for campus activities: tickets, voting, dues, fundraising, QR verification and event discovery.",
+    "Dark, minimal event-ticketing interface with oversized editorial hero typography, pill CTAs, and image-led event cards.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`min-h-screen antialiased ${outfit.className}`}>
+    <html lang="en" className="dark">
+      <body className={`min-h-screen bg-[#0a0a0a] text-[#fafafa] antialiased ${geistSans.variable} font-sans`}>
         <LayoutWrapper>{children}</LayoutWrapper>
       </body>
     </html>

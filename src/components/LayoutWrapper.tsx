@@ -36,7 +36,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-[66px] bg-[#f8f7fa]">{children}</main>
+      <main className="min-h-screen pt-[72px] bg-[#0a0a0a] text-[#fafafa]">{children}</main>
       <Footer />
     </>
   );

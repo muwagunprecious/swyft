@@ -17,8 +17,8 @@ export function formatEventDate(dateString: string) {
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
 
-    const weekday = d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-    const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+    const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
+    const month = d.toLocaleDateString("en-US", { month: "short" });
     const day = d.getDate();
 
     let hours = d.getHours();
@@ -49,10 +49,10 @@ export default function EventCard({
 
   return (
     <Link href={`/events/${id}`} className="group block h-full no-underline">
-      <article className="eb-card h-full flex flex-col justify-between">
+      <article className="grix-card h-full flex flex-col justify-between overflow-hidden transition-all duration-200">
         
-        {/* Dominant Event Poster */}
-        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#f8f7fa]">
+        {/* Dominant Poster Artwork */}
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[8px] bg-[#171717] mb-4">
           <img
             src={bannerImage}
             alt={title}
@@ -60,47 +60,42 @@ export default function EventCard({
             loading="lazy"
           />
           {category && (
-            <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#39364f] shadow-sm">
+            <span className="absolute top-2.5 left-2.5 rounded-full bg-[#0a0a0a]/90 border border-[#374151] px-2.5 py-0.5 text-[11px] font-medium text-[#fafafa] tracking-wide">
               {category}
             </span>
           )}
           {isVotingEnabled && (
-            <span className="absolute top-3 right-3 rounded-full bg-[#d1410c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm">
-              Voting Live
+            <span className="absolute top-2.5 right-2.5 rounded-full bg-[#fafafa] text-[#171717] px-2.5 py-0.5 text-[11px] font-medium">
+              Voting Active
             </span>
           )}
         </div>
 
-        {/* Content Section */}
-        <div className="p-4 flex flex-col flex-1 justify-between gap-3">
+        {/* Card Metadata & Title */}
+        <div className="flex flex-col flex-1 justify-between gap-3">
           <div>
-            {/* Date line in Eventbrite brand accent */}
-            <p className="text-[13px] font-semibold text-[#d1410c] uppercase tracking-tight mb-1">
+            <p className="text-[13px] font-medium text-[#9ca3af] mb-1">
               {formattedDate}
             </p>
 
-            {/* Event Title */}
-            <h3 className="text-[16px] md:text-[18px] font-semibold leading-[22px] text-[#39364f] line-clamp-2 mb-1 group-hover:text-[#d1410c] transition-colors">
+            <h3 className="text-[18px] font-medium leading-[24px] text-[#fafafa] line-clamp-2 mb-1 group-hover:text-white transition-colors">
               {title}
             </h3>
 
-            {/* Location & Campus */}
-            <p className="text-[14px] font-medium text-[#6f7287] line-clamp-1">
+            <p className="text-[14px] font-normal text-[#9ca3af] line-clamp-1">
               {location} {university ? `• ${university}` : ""}
             </p>
           </div>
 
-          {/* Price & Call to Action Indicator */}
-          <div className="pt-2 border-t border-[#e5e7eb] flex items-center justify-between">
-            <span className="text-[14px] font-semibold text-[#39364f]">
+          <div className="pt-3 border-t border-[#374151] flex items-center justify-between">
+            <span className="text-[14px] font-medium text-[#fafafa]">
               {priceLabel}
             </span>
-            <span className="text-[12px] font-semibold text-[#d1410c] group-hover:underline">
+            <span className="text-[13px] font-medium text-[#fafafa] group-hover:underline">
               Tickets &rarr;
             </span>
           </div>
         </div>
-
       </article>
     </Link>
   );
