@@ -33,7 +33,6 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
   const handleCheckout = () => {
     if (!selectedTicket) return;
     
-    // Build cart in the exact format CheckoutForm reads from localStorage
     const cartItem = {
       ticketId: selectedTicket.id,
       title: eventTitle,
@@ -50,20 +49,20 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
 
   if (!tickets || tickets.length === 0) {
     return (
-      <div className="p-4 border border-dashed border-gray-200 rounded-xl text-center text-xs font-semibold text-gray-400">
+      <div className="p-6 border border-[#374151] rounded-lg text-center text-sm font-normal text-[#9ca3af] bg-[#0a0a0a]">
         No ticket options available for this event.
       </div>
     );
   }
 
   return (
-    <div className="mt-4 w-full">
+    <div className="w-full">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">
-          Select Admission Type
+        <h3 className="text-[13px] font-medium tracking-wider uppercase text-[#9ca3af]">
+          Select Admission
         </h3>
-        <span className="text-xs font-bold text-gray-500">
-          {tickets.length} {tickets.length === 1 ? "tier" : "tiers"} available
+        <span className="text-[13px] font-light text-[#9ca3af]">
+          {tickets.length} {tickets.length === 1 ? "tier" : "tiers"}
         </span>
       </div>
 
@@ -85,54 +84,58 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
               }}
               tabIndex={0}
               role="button"
-              className={`w-full rounded-xl border bg-white p-4 text-left transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#f05537]/50 ${
+              className={`w-full rounded-lg border p-4 text-left transition-all cursor-pointer focus:outline-none ${
                 isSelected
-                  ? "border-[#f05537] shadow-[0_4px_20px_rgba(240,85,55,0.08)] bg-orange-50/5"
-                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+                  ? "border-[#fafafa] bg-[#171717]"
+                  : "border-[#374151] bg-[#0a0a0a] hover:border-[#9ca3af]"
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Custom radio indicator */}
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition ${
-                    isSelected ? "border-[#f05537]" : "border-gray-300"
+                <div className="flex items-center gap-3.5">
+                  {/* Minimal radio dot */}
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? "border-[#fafafa]" : "border-[#374151]"
                   }`}>
-                    {isSelected && <div className="w-2 h-2 rounded-full bg-[#f05537]" />}
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-[#fafafa]" />}
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-gray-900 uppercase tracking-wide">{t.name}</h4>
-                    <p className={`text-xs font-black mt-0.5 ${t.price === 0 ? "text-emerald-600" : "text-[#f05537]"}`}>
+                    <h4 className="text-[15px] font-medium text-[#fafafa]">{t.name}</h4>
+                    <p className="text-[14px] font-light text-[#9ca3af] mt-0.5">
                       {t.price === 0 ? "Free" : formatNaira(t.price)}
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                    avail < 20 ? "bg-amber-50 text-amber-700 border border-amber-100" : "bg-gray-100 text-gray-500"
+                  <span className={`text-[11px] font-medium uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                    avail <= 0
+                      ? "border-[#ef4444] text-[#ef4444]"
+                      : isSelected
+                      ? "border-[#fafafa] text-[#fafafa]"
+                      : "border-[#374151] text-[#9ca3af]"
                   }`}>
                     {avail <= 0 ? "Sold Out" : `${avail} left`}
                   </span>
                 </div>
               </div>
 
-              {/* Quantity Stepper (Rendered inside the active card) */}
+              {/* Quantity Stepper */}
               {isSelected && avail > 0 && (
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Quantity</span>
-                  <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg p-1">
+                <div className="mt-4 pt-3 border-t border-[#374151] flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-[#9ca3af] uppercase tracking-wider">Quantity</span>
+                  <div className="flex items-center gap-3 bg-[#0a0a0a] border border-[#374151] rounded-full px-2 py-0.5">
                     <button
                       onClick={(e) => { e.stopPropagation(); setQty(Math.max(1, qty - 1)); }}
                       disabled={qty <= 1}
-                      className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-sm font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[14px] font-medium text-[#fafafa] hover:bg-[#171717] disabled:opacity-30 disabled:cursor-not-allowed bg-transparent border-none cursor-pointer"
                     >
-                      -
+                      –
                     </button>
-                    <span className="min-w-[20px] text-center text-xs font-black text-gray-800">{qty}</span>
+                    <span className="min-w-[20px] text-center text-[14px] font-medium text-[#fafafa]">{qty}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); setQty(Math.min(avail, qty + 1)); }}
                       disabled={qty >= avail}
-                      className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-sm font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[14px] font-medium text-[#fafafa] hover:bg-[#171717] disabled:opacity-30 disabled:cursor-not-allowed bg-transparent border-none cursor-pointer"
                     >
                       +
                     </button>
@@ -146,35 +149,33 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
 
       {/* Bill summary breakdown */}
       {selectedTicket && available > 0 && (
-        <div className="mb-6 rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-            <span>Subtotal ({qty} ticket{qty > 1 ? "s" : ""})</span>
-            <span className="font-bold text-gray-900">
-              {isFree ? "₦0.00" : formatNaira(subtotal)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between border-t border-gray-200/50 pt-2 text-sm font-black text-gray-950">
-            <span>Total Cost</span>
-            <span className={isFree ? "text-emerald-600" : "text-[#f05537]"}>
+        <div className="mb-6 rounded-lg bg-[#171717] border border-[#374151] p-4 space-y-2">
+          <div className="flex items-center justify-between text-[13px] font-light text-[#9ca3af]">
+            <span>Subtotal ({qty} {qty > 1 ? "tickets" : "ticket"})</span>
+            <span className="font-medium text-[#fafafa]">
               {isFree ? "Free" : formatNaira(subtotal)}
             </span>
+          </div>
+          <div className="flex items-center justify-between border-t border-[#374151] pt-2 text-[15px] font-medium text-[#fafafa]">
+            <span>Total</span>
+            <span>{isFree ? "Free" : formatNaira(subtotal)}</span>
           </div>
         </div>
       )}
 
-      {/* Premium CTA Button */}
+      {/* Primary Pill Button */}
       <button
         onClick={handleCheckout}
         disabled={available <= 0}
-        className="flex h-12 w-full items-center justify-center rounded-xl bg-[#f05537] hover:bg-[#d1410c] text-sm font-black uppercase tracking-wider text-white shadow-md hover:shadow-lg hover:shadow-orange-500/10 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-200"
+        className="btn-primary w-full justify-center !min-h-[52px] !text-[16px] disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {available <= 0
           ? "Sold Out"
-          : `Get ${isFree ? "Free Pass" : "Admission Pass"}`}
+          : `Continue to Checkout (${isFree ? "Free" : formatNaira(subtotal)})`}
       </button>
 
-      <p className="mt-3 text-center text-[10px] font-bold text-gray-400">
-        ⚡ Instant receipt & ticket delivery to your inbox.
+      <p className="mt-4 text-center text-[12px] font-light text-[#9ca3af]">
+        Instant digital tickets with scannable QR verification pass.
       </p>
     </div>
   );

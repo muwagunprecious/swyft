@@ -28,7 +28,6 @@ export default function EventDetailsPage() {
   const [event, setEvent] = useState<ApiEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
@@ -54,27 +53,25 @@ export default function EventDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#faf9fc] text-[#1e0a3c] pb-24">
-        <div className="mx-auto max-w-[1200px] px-6 pt-8">
-          <div className="mb-8">
-            <Link href="/events" className="inline-flex items-center gap-2 text-sm font-black text-gray-500 hover:text-[#f05537] transition-colors group no-underline">
-              <span className="group-hover:-translate-x-1 transition-transform">←</span>
-              Back to Events
+      <div className="min-h-screen bg-[#0a0a0a] text-[#fafafa] pb-24">
+        <div className="grix-container pt-12">
+          <div className="mb-10">
+            <Link href="/events" className="btn-link inline-flex items-center gap-2 text-[14px]">
+              &larr; Back to Events
             </Link>
           </div>
-          <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-start animate-pulse">
+          <div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] items-start animate-pulse">
             <div className="space-y-8">
-              <div className="rounded-2xl bg-gray-200 aspect-[16/10]" />
-              <div className="bg-white rounded-2xl p-8 border border-gray-100 space-y-4">
-                <div className="h-6 w-48 bg-gray-200 rounded" />
-                <div className="h-4 w-full bg-gray-200 rounded" />
-                <div className="h-4 w-3/4 bg-gray-200 rounded" />
+              <div className="rounded-lg bg-[#171717] aspect-[16/10] border border-[#374151]" />
+              <div className="grix-card space-y-4 p-8">
+                <div className="h-6 w-48 bg-[#262626] rounded" />
+                <div className="h-4 w-full bg-[#262626] rounded" />
+                <div className="h-4 w-3/4 bg-[#262626] rounded" />
               </div>
             </div>
-            <div className="bg-white rounded-2xl p-8 border border-gray-100 space-y-4">
-              <div className="h-8 w-2/3 bg-gray-200 rounded" />
-              <div className="h-12 w-full bg-gray-200 rounded-xl" />
-              <div className="h-12 w-full bg-gray-200 rounded-xl" />
+            <div className="grix-card p-8 space-y-6">
+              <div className="h-8 w-2/3 bg-[#262626] rounded" />
+              <div className="h-14 w-full bg-[#262626] rounded-full" />
             </div>
           </div>
         </div>
@@ -84,15 +81,15 @@ export default function EventDetailsPage() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-[#faf9fc] flex items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+      <div className="min-h-screen bg-[#0a0a0a] text-[#fafafa] flex items-center justify-center">
+        <div className="text-center p-8 max-w-md">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-[#374151] bg-[#171717]">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-2">Event Not Found</h2>
-          <p className="text-gray-500 mb-6">{error || "The event you're looking for doesn't exist or has been removed."}</p>
-          <Link href="/events" className="inline-flex h-11 items-center rounded-full bg-[#f05537] px-6 text-sm font-bold text-white no-underline transition hover:bg-[#d1410c]">
-            Browse Events
+          <h2 className="text-2xl font-light text-[#fafafa] mb-3">Event Not Found</h2>
+          <p className="text-[#9ca3af] font-light text-[14px] mb-8">{error || "The event you are looking for does not exist or has ended."}</p>
+          <Link href="/events" className="btn-primary">
+            Explore Events
           </Link>
         </div>
       </div>
@@ -107,11 +104,8 @@ export default function EventDetailsPage() {
     day: "numeric",
     year: "numeric",
   });
-  const monthName = eventDateObj.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-  const dayNum = eventDateObj.getDate();
   const displayTime = eventDateObj.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  // Normalize tickets (API returns Ticket[], mock had tickets[])
   const tickets = (event.Ticket || []).map((t: any) => ({
     id: t.id,
     name: t.name,
@@ -122,147 +116,119 @@ export default function EventDetailsPage() {
 
   const organizerName = typeof event.organizer === "object" ? event.organizer?.name : (event.organizer || "Event Organizer");
   const eventSlugOrId = event.slug || event.id;
-
   const shareUrl = origin ? `${origin}/events/${eventSlugOrId}` : `/events/${eventSlugOrId}`;
 
-  const handleCopyLink = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
-  };
-
-  const handleNativeShare = () => {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      navigator.share({
-        title: event.title,
-        text: `Get your tickets for ${event.title}!`,
-        url: shareUrl,
-      }).catch(() => {
-        handleCopyLink();
-      });
-    } else {
-      handleCopyLink();
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#faf9fc] text-[#1e0a3c] relative overflow-hidden pb-24">
+    <div className="min-h-screen bg-[#0a0a0a] text-[#fafafa] pb-28">
       
-      {/* Decorative ambient background glows */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-orange-100/30 blur-[120px] pointer-events-none" />
-      <div className="absolute top-[30%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-100/30 blur-[160px] pointer-events-none" />
-
-      {/* Main Container */}
-      <div className="mx-auto max-w-[1200px] px-6 pt-8 relative z-10">
+      <div className="grix-container pt-10">
         
-        {/* Navigation Breadcrumb & Mobile Share */}
-        <div className="mb-8 flex items-center justify-between">
+        {/* Navigation Breadcrumb & Share Pill */}
+        <div className="mb-10 flex items-center justify-between">
           <Link 
             href="/events" 
-            className="inline-flex items-center gap-2 text-sm font-black text-gray-500 hover:text-[#f05537] transition-colors group no-underline"
+            className="btn-link inline-flex items-center gap-2 text-[14px]"
           >
-            <span className="group-hover:-translate-x-1 transition-transform">←</span>
-            Back to Events
+            <span>&larr;</span> Back to Events
           </Link>
 
-          <div className="lg:hidden">
+          <div>
             <ShareButton url={shareUrl} title={event.title} />
           </div>
         </div>
 
-        {/* Outer Shell Grid */}
-        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-start">
+        {/* Outer Grid: Visual / Description & Ticket Booking Sidebar */}
+        <div className="grid gap-12 lg:grid-cols-[1.15fr_0.85fr] items-start">
           
-          {/* Left Column: Visual Assets & Description */}
-          <div className="space-y-8">
+          {/* Left Column: Visual Artwork & Editorial Description */}
+          <div className="space-y-10">
             
-            {/* Stunning Floating Image Banner */}
-            <div className="relative group rounded-2xl overflow-hidden shadow-2xl bg-black border border-gray-100 transition duration-500 hover:shadow-orange-100/50">
+            {/* Dominant Poster Artwork */}
+            <div className="relative rounded-lg overflow-hidden border border-[#374151] bg-[#171717]">
               <img 
                 src={event.bannerImage} 
                 alt={event.title} 
-                className="w-full object-cover aspect-[16/10] transition duration-700 group-hover:scale-[1.01]" 
+                className="w-full object-cover aspect-[16/10]" 
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute top-4 left-4">
+                <span className="rounded-full bg-[#0a0a0a]/90 border border-[#374151] px-3.5 py-1 text-[12px] font-medium text-[#fafafa] tracking-wide">
+                  {event.category}
+                </span>
+              </div>
             </div>
 
-            {/* Event Overview Section */}
-            <div className="bg-white border border-gray-150 rounded-2xl p-8 shadow-sm">
-              <h2 className="text-xl font-black mb-4 uppercase tracking-wider text-gray-950 flex items-center gap-2">
-                <span className="w-1.5 h-6 bg-[#f05537] rounded-full" />
-                About This Event
+            {/* Event Description Section (Editorial Minimal UI) */}
+            <div className="grix-card p-8 md:p-10">
+              <span className="text-[12px] font-medium uppercase tracking-widest text-[#9ca3af]">
+                Overview
+              </span>
+              <h2 className="text-[28px] md:text-[32px] font-extralight text-[#fafafa] mt-1 mb-6">
+                About this event
               </h2>
-              <p className="text-[15px] font-medium leading-relaxed text-gray-600">
-                {event.description || "No description provided for this event."}
-              </p>
               
-              <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 gap-6">
+              <div className="prose prose-invert max-w-none">
+                <p className="text-[16px] md:text-[17px] font-light leading-[28px] text-[#fafafa] whitespace-pre-line">
+                  {event.description || "No specific details provided for this event."}
+                </p>
+              </div>
+              
+              {/* Event Metadata Spec Breakdown */}
+              <div className="mt-10 pt-8 border-t border-[#374151] grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div>
-                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Organizer</h4>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{organizerName}</p>
+                  <h4 className="text-[12px] font-medium uppercase tracking-wider text-[#9ca3af]">Organizer</h4>
+                  <p className="text-[15px] font-medium text-[#fafafa] mt-1.5">{organizerName}</p>
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Category</h4>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{event.category}</p>
+                  <h4 className="text-[12px] font-medium uppercase tracking-wider text-[#9ca3af]">Category</h4>
+                  <p className="text-[15px] font-medium text-[#fafafa] mt-1.5">{event.category}</p>
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Location</h4>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{event.location || "TBA"}</p>
+                  <h4 className="text-[12px] font-medium uppercase tracking-wider text-[#9ca3af]">Venue</h4>
+                  <p className="text-[15px] font-medium text-[#fafafa] mt-1.5">{event.location || "TBA"}</p>
                 </div>
               </div>
             </div>
 
           </div>
 
-          {/* Right Column: Ticket Purchase & Details Sidebar */}
-          <div className="space-y-8 sticky top-[90px]">
+          {/* Right Column: Ticket Purchase & Booking Sidebar */}
+          <div className="space-y-6 lg:sticky lg:top-[96px]">
             
-            {/* Floating Details Card */}
-            <div className="bg-white border border-gray-150 rounded-2xl p-8 shadow-md">
+            <div className="grix-card p-8 md:p-10 space-y-6">
               
-              {/* Category chip & share */}
-              <div className="flex items-center justify-between mb-6">
-                <span className="inline-flex items-center rounded-full border border-orange-100 bg-orange-50/50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#f05537]">
-                  {event.category}
+              {/* Event Title */}
+              <div>
+                <span className="text-[12px] font-medium uppercase tracking-widest text-[#9ca3af]">
+                  Live Registration
                 </span>
-                
-                {/* Micro-interactive Share button (Desktop Only) */}
-                <div className="hidden lg:block">
-                  <ShareButton url={shareUrl} title={event.title} />
-                </div>
+                <h1 className="text-[26px] md:text-[32px] font-light text-[#fafafa] leading-tight mt-1.5 mb-4">
+                  {event.title}
+                </h1>
               </div>
 
-              {/* Title */}
-              <h1 className="text-2xl font-black text-gray-950 leading-tight mb-6">
-                {event.title}
-              </h1>
-
-              {/* Event Meta */}
-              <div className="space-y-4">
+              {/* Date & Location Highlights */}
+              <div className="space-y-3 pb-6 border-b border-[#374151]">
                 
-                {/* Date card */}
-                <div className="flex items-center gap-4 bg-[#fbfbfd] p-3 rounded-xl border border-gray-100">
-                  <div className="flex flex-col items-center justify-center bg-orange-50 border border-orange-100/50 text-[#f05537] w-12 h-12 rounded-lg shrink-0">
-                    <span className="text-[9px] font-black tracking-widest">{monthName}</span>
-                    <span className="text-lg font-black leading-none mt-0.5">{dayNum}</span>
-                  </div>
+                <div className="flex items-start gap-3.5 text-[#9ca3af]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-[#fafafa]">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
                   <div>
-                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Date & Time</h4>
-                    <p className="text-xs font-bold text-gray-700 mt-0.5">{formattedDate}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{displayTime}</p>
+                    <p className="text-[14px] font-medium text-[#fafafa]">{formattedDate}</p>
+                    <p className="text-[13px] font-light text-[#9ca3af]">{displayTime}</p>
                   </div>
                 </div>
 
-                {/* Location card */}
-                <div className="flex items-center gap-4 bg-[#fbfbfd] p-3 rounded-xl border border-gray-100">
-                  <div className="flex items-center justify-center bg-purple-50 border border-purple-100/50 text-purple-600 w-12 h-12 rounded-lg shrink-0">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Venue</h4>
-                    <p className="text-xs font-bold text-gray-700 mt-0.5 truncate">{event.location || "TBA"}</p>
+                <div className="flex items-start gap-3.5 text-[#9ca3af]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5 text-[#fafafa]">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <div>
+                    <p className="text-[14px] font-medium text-[#fafafa]">{event.location || "Venue to be announced"}</p>
                   </div>
                 </div>
 
@@ -270,48 +236,27 @@ export default function EventDetailsPage() {
 
               {/* Live Voting Lobby Callout */}
               {event.isVotingEnabled && (
-                <div className="mt-6 bg-gradient-to-r from-[#1e0a3c] to-[#2c1056] rounded-2xl p-5 shadow-lg border border-white/5 text-white space-y-4 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#f05537]/20 to-transparent rounded-full blur-xl pointer-events-none" />
-                  
-                  <div className="flex items-center justify-between relative z-10">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f05537] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#f05537]"></span>
-                      </span>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-[#f05537]">
-                        Live Campaign
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-400">🗳️ voting active</span>
+                <div className="rounded-lg border border-[#374151] bg-[#171717] p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-medium uppercase tracking-wider text-[#fafafa] flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-[#fafafa] animate-pulse" />
+                      Voting Active
+                    </span>
+                    <span className="text-[12px] text-[#9ca3af]">Live Ballot</span>
                   </div>
-
-                  <div className="flex gap-4 items-center relative z-10">
-                    <img
-                      src={event.bannerImage || '/images/party.png'}
-                      alt={event.title}
-                      className="h-14 w-14 rounded-xl object-cover bg-slate-800 border border-white/10 shrink-0"
-                    />
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <h3 className="text-sm font-black tracking-tight text-white">Cast Your Ballot Now</h3>
-                      <p className="text-xs font-semibold text-slate-350 line-clamp-2">
-                        Support your favorite contestants by voting today.
-                      </p>
-                    </div>
-                  </div>
-
+                  <p className="text-[13px] font-light text-[#9ca3af]">
+                    Vote for registered contestants and support your favorites directly.
+                  </p>
                   <Link
                     href={`/voting/${event.id}`}
-                    className="w-full bg-[#f05537] hover:bg-[#d1410c] text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/10 hover:-translate-y-0.5 flex items-center justify-center gap-2 h-11 no-underline relative z-10"
+                    className="btn-secondary w-full justify-center !min-h-[44px] !text-[14px] !py-2"
                   >
-                    Enter Voting Lobby 🗳️
+                    Enter Voting Lobby &rarr;
                   </Link>
                 </div>
               )}
 
-              <hr className="my-6 border-gray-100" />
-
-              {/* Tickets Widget Wrapper */}
+              {/* Tickets Widget Selection */}
               <TicketWidget 
                 eventId={event.id} 
                 eventTitle={event.title}
@@ -320,93 +265,6 @@ export default function EventDetailsPage() {
                 tickets={tickets} 
               />
 
-              {/* Dedicated Share Box Around Ticket Box */}
-              <div className="mt-8 rounded-2xl border border-gray-200/90 bg-gradient-to-b from-[#faf9fc] to-white p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-[#d1410c]">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <circle cx="18" cy="5" r="3"/>
-                        <circle cx="6" cy="12" r="3"/>
-                        <circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-gray-900">
-                        Share this Event
-                      </h4>
-                      <p className="text-[11px] font-medium text-gray-500">
-                        Spread the word with friends & followers
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Copyable clean title slug link */}
-                <div className="relative mb-3 flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      readOnly
-                      value={shareUrl}
-                      className="w-full h-10 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-inner focus:outline-none select-all truncate"
-                    />
-                  </div>
-                  <button
-                    onClick={handleCopyLink}
-                    type="button"
-                    className={`h-10 px-4 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 shadow-sm ${
-                      copied 
-                        ? "bg-emerald-600 text-white" 
-                        : "bg-[#d1410c] text-white hover:bg-[#b03508] active:scale-95"
-                    }`}
-                  >
-                    {copied ? (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        Copy Link
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Quick Share Buttons */}
-                <div className="flex items-center gap-2 pt-2 border-t border-gray-150">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-0.5">Quick Share:</span>
-                  <a
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out ${event.title} on Swyft: ${shareUrl}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-[#25D366]/10 text-[#075E54] hover:bg-[#25D366]/20 transition text-[11px] font-bold no-underline border border-[#25D366]/20"
-                  >
-                    <span className="text-sm">💬</span> WhatsApp
-                  </a>
-                  <a
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Get tickets for ${event.title}`)}&url=${encodeURIComponent(shareUrl)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-black/5 text-gray-900 hover:bg-black/10 transition text-[11px] font-bold no-underline border border-gray-200"
-                  >
-                    <span className="text-xs font-black">𝕏</span> Post
-                  </a>
-                  <button
-                    onClick={handleNativeShare}
-                    type="button"
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition text-[11px] font-bold border border-gray-200"
-                    title="More sharing options"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-                  </button>
-                </div>
-              </div>
-
             </div>
 
           </div>
@@ -414,6 +272,7 @@ export default function EventDetailsPage() {
         </div>
 
       </div>
+
     </div>
   );
 }

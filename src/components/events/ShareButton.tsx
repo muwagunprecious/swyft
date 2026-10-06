@@ -34,27 +34,27 @@ export default function ShareButton({ url, title }: Props) {
     <button 
       onClick={handleShare}
       type="button"
-      className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
+      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium transition-all cursor-pointer ${
         copied
-          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-          : "border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:border-gray-300 hover:bg-gray-50"
+          ? "border-[#fafafa] bg-[#fafafa] text-[#171717]"
+          : "border-[#374151] bg-transparent text-[#fafafa] hover:border-[#fafafa]"
       }`}
     >
       {copied ? (
         <>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          Copied!
+          Link Copied
         </>
       ) : (
         <>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
             <polyline points="16 6 12 2 8 6" />
             <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
-          Share
+          Share Event
         </>
       )}
     </button>
