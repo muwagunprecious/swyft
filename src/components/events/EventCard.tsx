@@ -9,6 +9,7 @@ export interface EventCardProps {
   bannerImage: string;
   university?: string;
   priceLabel?: string;
+  originalPrice?: string;
   isVotingEnabled?: boolean;
 }
 
@@ -43,6 +44,7 @@ export default function EventCard({
   bannerImage,
   university,
   priceLabel = "Get Tickets",
+  originalPrice,
   isVotingEnabled = false,
 }: EventCardProps) {
   const formattedDate = formatEventDate(date);
@@ -69,6 +71,11 @@ export default function EventCard({
               Voting Active
             </span>
           )}
+          {originalPrice && (
+            <span className="absolute bottom-2.5 left-2.5 rounded-full bg-emerald-950/90 border border-emerald-700/80 text-emerald-400 px-2.5 py-0.5 text-[10px] font-bold">
+              Discount
+            </span>
+          )}
         </div>
 
         {/* Card Metadata & Title */}
@@ -88,9 +95,16 @@ export default function EventCard({
           </div>
 
           <div className="pt-3 border-t border-[#374151] flex items-center justify-between">
-            <span className="text-[14px] font-medium text-[#fafafa]">
-              {priceLabel}
-            </span>
+            <div className="flex items-center gap-2">
+              {originalPrice && (
+                <span className="text-[12px] text-gray-500 line-through">
+                  {originalPrice}
+                </span>
+              )}
+              <span className={`text-[14px] font-medium ${originalPrice ? 'text-emerald-400 font-bold' : 'text-[#fafafa]'}`}>
+                {priceLabel}
+              </span>
+            </div>
             <span className="text-[13px] font-medium text-[#fafafa] group-hover:underline">
               Tickets &rarr;
             </span>

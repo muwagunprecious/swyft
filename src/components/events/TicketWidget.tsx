@@ -8,6 +8,8 @@ interface Ticket {
   id: string;
   name: string;
   price: number;
+  discountPrice?: number | null;
+  discountEndsAt?: string | null;
   quantity: number;
   sold: number;
 }
@@ -26,8 +28,29 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selectedTicket = tickets[selectedIndex];
-  const subtotal = selectedTicket ? selectedTicket.price * qty : 0;
-  const isFree = selectedTicket?.price === 0;
+  
+  // Calculate if selected ticket has an active discount
+  const isDiscountActive = (ticket?: Ticket) => {
+    if (!ticket) return false;
+    return (
+      ticket.discountPrice !== undefined &&
+      ticket.discountPrice !== null &&
+      ticket.discountEndsAt &&
+      new Date(ticket.discountEndsAt) > new Date()
+    );
+  };
+
+  const getEffectivePrice = (ticket?: Ticket) => {
+    if (!ticket) return 0;
+    if (isDiscountActive(ticket)) {
+      return Number(ticket.discountPrice);
+    }
+    return Number(ticket.price);
+  };
+
+  const effectivePrice = getEffectivePrice(selectedTicket);
+  const subtotal = effectivePrice * qty;
+  const isFree = effectivePrice === 0;
   const available = selectedTicket ? (selectedTicket.quantity - selectedTicket.sold) : 0;
 
   const handleCheckout = () => {
@@ -37,7 +60,8 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
       ticketId: selectedTicket.id,
       title: eventTitle,
       ticketType: selectedTicket.name,
-      price: selectedTicket.price,
+      price: effectivePrice,
+      originalPrice: isDiscountActive(selectedTicket) ? selectedTicket.price : undefined,
       qty,
       image: eventImage,
       subaccountCode,
@@ -71,7 +95,14 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
         {tickets.map((t, i) => {
           const isSelected = i === selectedIndex;
           const avail = t.quantity - t.sold;
-          
+          const hasDiscount = isDiscountActive(t);
+          const currentPrice = getEffectivePrice(t);
+
+          // Calculate remaining days for discount
+          const daysRemaining = hasDiscount && t.discountEndsAt
+            ? Math.max(1, Math.ceil((new Date(t.discountEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+            : 0;
+
           return (
             <div
               key={t.name}
@@ -99,10 +130,31 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
                     {isSelected && <div className="w-2 h-2 rounded-full bg-[#fafafa]" />}
                   </div>
                   <div>
-                    <h4 className="text-[15px] font-medium text-[#fafafa]">{t.name}</h4>
-                    <p className="text-[14px] font-light text-[#9ca3af] mt-0.5">
-                      {t.price === 0 ? "Free" : formatNaira(t.price)}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-[15px] font-medium text-[#fafafa]">{t.name}</h4>
+                      {hasDiscount && (
+                        <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-full">
+                          {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1">
+                      {hasDiscount ? (
+                        <>
+                          <span className="text-[13px] font-normal text-gray-500 line-through">
+                            {formatNaira(t.price)}
+                          </span>
+                          <span className="text-[15px] font-bold text-emerald-400">
+                            {formatNaira(currentPrice)}
+                          </span>
+                        </>
+                      ) : (
+                        <p className="text-[14px] font-light text-[#9ca3af]">
+                          {currentPrice === 0 ? "Free" : formatNaira(currentPrice)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -152,9 +204,16 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
         <div className="mb-6 rounded-lg bg-[#171717] border border-[#374151] p-4 space-y-2">
           <div className="flex items-center justify-between text-[13px] font-light text-[#9ca3af]">
             <span>Subtotal ({qty} {qty > 1 ? "tickets" : "ticket"})</span>
-            <span className="font-medium text-[#fafafa]">
-              {isFree ? "Free" : formatNaira(subtotal)}
-            </span>
+            <div className="flex items-center gap-2">
+              {isDiscountActive(selectedTicket) && (
+                <span className="text-[12px] text-gray-500 line-through">
+                  {formatNaira(selectedTicket.price * qty)}
+                </span>
+              )}
+              <span className="font-medium text-[#fafafa]">
+                {isFree ? "Free" : formatNaira(subtotal)}
+              </span>
+            </div>
           </div>
           <div className="flex items-center justify-between border-t border-[#374151] pt-2 text-[15px] font-medium text-[#fafafa]">
             <span>Total</span>

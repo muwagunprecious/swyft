@@ -13,6 +13,8 @@ interface TicketRow {
   price: string;
   capacity: string;
   description: string;
+  discountPrice?: string;
+  discountDays?: string;
 }
 
 let nextId = 2;
@@ -138,6 +140,8 @@ export default function CreateEventPage() {
         name: t.name.trim() || (ticketMode === "free" ? "Free Pass" : ticketMode === "donation" ? "Donation" : "Regular"),
         price: priceVal,
         quantity: parseInt(t.capacity) || 100,
+        discountPrice: t.discountPrice && parseFloat(t.discountPrice) >= 0 ? parseFloat(t.discountPrice) : null,
+        discountDays: t.discountDays && parseInt(t.discountDays) > 0 ? parseInt(t.discountDays) : null,
       };
     });
 
@@ -343,13 +347,15 @@ export default function CreateEventPage() {
               {/* COLUMN HEADERS */}
               <div
                 className={`mb-2 hidden sm:grid gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400 ${
-                  ticketMode === "paid" ? "grid-cols-[1fr_140px_110px_36px]" : "grid-cols-[1fr_110px_36px]"
+                  ticketMode === "paid" ? "grid-cols-[1fr_130px_130px_110px_90px_36px]" : "grid-cols-[1fr_110px_36px]"
                 }`}
               >
                 <span>Category Name</span>
                 {ticketMode === "paid" && <span>Price (₦)</span>}
+                {ticketMode === "paid" && <span>Discount Price (₦)</span>}
                 {ticketMode === "donation" && <span>Min. Amount (₦)</span>}
                 <span>Capacity</span>
+                {ticketMode === "paid" && <span>Valid (Days)</span>}
                 <span />
               </div>
 
@@ -359,7 +365,7 @@ export default function CreateEventPage() {
                   <div
                     key={ticket.id}
                     className={`grid items-end gap-3 sm:items-center sm:gap-2 rounded-xl sm:rounded-none border border-gray-100 sm:border-none p-3 sm:p-0 bg-gray-50 sm:bg-transparent ${
-                      ticketMode === "paid" ? "grid-cols-2 sm:grid-cols-[1fr_140px_110px_36px]" : "grid-cols-2 sm:grid-cols-[1fr_110px_36px]"
+                      ticketMode === "paid" ? "grid-cols-2 sm:grid-cols-[1fr_130px_130px_110px_90px_36px]" : "grid-cols-2 sm:grid-cols-[1fr_110px_36px]"
                     }`}
                   >
                     {/* Category Name */}
@@ -399,6 +405,26 @@ export default function CreateEventPage() {
                       </div>
                     )}
 
+                    {/* Optional Discount Price — only for paid */}
+                    {ticketMode === "paid" && (
+                      <div>
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase text-gray-400 sm:hidden">
+                          Discount Price (₦)
+                        </span>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-emerald-600">₦</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={ticket.discountPrice || ""}
+                            onChange={(e) => updateTicket(ticket.id, "discountPrice", e.target.value)}
+                            placeholder="Optional"
+                            className="h-10 w-full rounded-lg border border-emerald-200 bg-white sm:bg-emerald-50/20 pl-7 pr-3 text-[13px] font-medium text-emerald-700 outline-none transition focus:border-emerald-500 focus:bg-white placeholder:text-gray-300"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {/* Capacity */}
                     <div>
                       <span className="mb-1.5 block text-[10px] font-bold uppercase text-gray-400 sm:hidden">Capacity</span>
@@ -411,6 +437,25 @@ export default function CreateEventPage() {
                         className="h-10 w-full rounded-lg border border-gray-200 bg-white sm:bg-[#F7F8FA] px-3 text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300"
                       />
                     </div>
+
+                    {/* Discount Valid Days — only for paid */}
+                    {ticketMode === "paid" && (
+                      <div>
+                        <span className="mb-1.5 block text-[10px] font-bold uppercase text-gray-400 sm:hidden">
+                          Valid (Days)
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={ticket.discountDays || ""}
+                          onChange={(e) => updateTicket(ticket.id, "discountDays", e.target.value)}
+                          placeholder="e.g. 5"
+                          disabled={!ticket.discountPrice}
+                          className="h-10 w-full rounded-lg border border-gray-200 bg-white sm:bg-[#F7F8FA] px-2 text-center text-[13px] font-medium text-[#1a202c] outline-none transition focus:border-[#f05537] focus:bg-white placeholder:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    )}
 
                     {/* Remove */}
                     <div className="flex justify-end sm:justify-center">
@@ -445,24 +490,45 @@ export default function CreateEventPage() {
                 <div className="mt-6 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4">
                   <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-gray-400">Preview</p>
                   <div className="flex flex-col gap-2">
-                    {tickets.filter((t) => t.name || t.capacity).map((t) => (
-                      <div key={t.id} className="flex items-center justify-between rounded-lg bg-white px-4 py-3 border border-gray-100">
-                        <div>
-                          <p className="text-[13px] font-bold text-[#1a202c]">{t.name || (ticketMode === "free" ? "Free Entry" : ticketMode === "donation" ? "General Donation" : "Regular Ticket")}</p>
-                          <p className="text-[11px] font-semibold text-gray-400">{t.capacity ? `${t.capacity} available` : "100 available"}</p>
+                    {tickets.filter((t) => t.name || t.capacity).map((t) => {
+                      const hasDiscount = ticketMode === "paid" && t.discountPrice && parseFloat(t.discountPrice) >= 0;
+                      return (
+                        <div key={t.id} className="flex items-center justify-between rounded-lg bg-white px-4 py-3 border border-gray-100">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[13px] font-bold text-[#1a202c]">{t.name || (ticketMode === "free" ? "Free Entry" : ticketMode === "donation" ? "General Donation" : "Regular Ticket")}</p>
+                              {hasDiscount && (
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  {t.discountDays ? `${t.discountDays} days discount` : "Discounted"}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-semibold text-gray-400">{t.capacity ? `${t.capacity} available` : "100 available"}</p>
+                          </div>
+                          <div className="text-right">
+                            {ticketMode === "free" ? (
+                              <span className="text-[13px] font-black" style={{ color: modeConfig[ticketMode].color }}>Free</span>
+                            ) : hasDiscount ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[12px] text-gray-400 line-through font-semibold">
+                                  ₦{Number(t.price || 0).toLocaleString()}
+                                </span>
+                                <span className="text-[14px] font-black text-emerald-600">
+                                  ₦{Number(t.discountPrice).toLocaleString()}
+                                </span>
+                              </div>
+                            ) : (
+                              <span
+                                className="text-[13px] font-black"
+                                style={{ color: modeConfig[ticketMode].color }}
+                              >
+                                {t.price ? `₦${Number(t.price).toLocaleString()}` : ticketMode === "donation" ? "Donation" : "₦0"}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span
-                          className="text-[13px] font-black"
-                          style={{ color: modeConfig[ticketMode].color }}
-                        >
-                          {ticketMode === "free"
-                            ? "Free"
-                            : t.price
-                            ? `₦${Number(t.price).toLocaleString()}`
-                            : ticketMode === "donation" ? "Donation" : "₦0"}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

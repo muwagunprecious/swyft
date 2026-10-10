@@ -110,6 +110,8 @@ export default function EventDetailsPage() {
     id: t.id,
     name: t.name,
     price: t.price,
+    discountPrice: t.discountPrice,
+    discountEndsAt: t.discountEndsAt,
     quantity: t.quantity,
     sold: t.sold,
   }));

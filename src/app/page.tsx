@@ -15,7 +15,14 @@ interface ApiEvent {
   category: string;
   university?: string;
   isVotingEnabled?: boolean;
-  Ticket?: { name: string; price: number; quantity: number; sold: number }[];
+  Ticket?: {
+    name: string;
+    price: number;
+    discountPrice?: number | null;
+    discountEndsAt?: string | null;
+    quantity: number;
+    sold: number;
+  }[];
 }
 
 export default function HomePage() {
@@ -130,7 +137,35 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredEvents.map((event) => {
               const tickets = event.Ticket || [];
-              const minPrice = tickets.length > 0 ? Math.min(...tickets.map((t) => t.price)) : null;
+
+              // Calculate active discount on the lowest priced ticket tier
+              let minPrice: number | null = null;
+              let originalPriceStr: string | undefined = undefined;
+
+              if (tickets.length > 0) {
+                const pricedTickets = tickets.map((t) => {
+                  const hasDiscount =
+                    t.discountPrice !== null &&
+                    t.discountPrice !== undefined &&
+                    t.discountEndsAt &&
+                    new Date(t.discountEndsAt) > new Date();
+
+                  const effective = hasDiscount ? Number(t.discountPrice) : Number(t.price);
+                  return {
+                    effective,
+                    original: Number(t.price),
+                    hasDiscount,
+                  };
+                });
+
+                pricedTickets.sort((a, b) => a.effective - b.effective);
+                const best = pricedTickets[0];
+                minPrice = best.effective;
+                if (best.hasDiscount && best.original > best.effective) {
+                  originalPriceStr = `₦${best.original.toLocaleString()}`;
+                }
+              }
+
               const priceLabel = minPrice === null || minPrice === 0 ? "Free" : `₦${minPrice.toLocaleString()}`;
 
               return (
@@ -144,6 +179,7 @@ export default function HomePage() {
                   bannerImage={event.bannerImage || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80"}
                   university={event.university}
                   priceLabel={priceLabel}
+                  originalPrice={originalPriceStr}
                   isVotingEnabled={event.isVotingEnabled}
                 />
               );

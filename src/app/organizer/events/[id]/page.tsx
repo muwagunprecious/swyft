@@ -25,9 +25,51 @@ export default function EventDetailManagement() {
   const [attendees, setAttendees] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Discount settings state
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [selectedTicketForDiscount, setSelectedTicketForDiscount] = useState<any>(null);
+  const [discountPriceInput, setDiscountPriceInput] = useState('');
+  const [discountDaysInput, setDiscountDaysInput] = useState('5');
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [discountMessage, setDiscountMessage] = useState('');
+
   // Sharing state
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
+
+  const handleSaveDiscount = async (remove = false) => {
+    if (!selectedTicketForDiscount) return;
+    setSavingDiscount(true);
+    setDiscountMessage('');
+
+    try {
+      const payload = remove
+        ? { discountPrice: null, discountDays: null }
+        : { discountPrice: discountPriceInput, discountDays: discountDaysInput };
+
+      const res = await api.put(`/organizer/tickets/${selectedTicketForDiscount.id}/discount`, payload);
+
+      // Update local event state
+      setEvent((prev: any) => {
+        if (!prev) return prev;
+        const updatedTickets = (prev.Ticket || prev.tickets || []).map((t: any) =>
+          t.id === selectedTicketForDiscount.id ? { ...t, ...res.data.ticket } : t
+        );
+        return {
+          ...prev,
+          Ticket: updatedTickets,
+          tickets: updatedTickets,
+        };
+      });
+
+      setShowDiscountModal(false);
+    } catch (err: any) {
+      console.error('Failed to update discount', err);
+      setDiscountMessage(err.response?.data?.message || 'Failed to update discount');
+    } finally {
+      setSavingDiscount(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -357,8 +399,11 @@ export default function EventDetailManagement() {
 
           {/* Ticket Tiers list */}
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 px-6 py-4">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Ticket Tiers</h3>
+            <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Ticket Tiers & Pricing</h3>
+                <p className="text-xs text-gray-500 font-medium">Add flash discounts with time-limited countdowns</p>
+              </div>
             </div>
             <div className="divide-y divide-gray-100">
               {tickets.length === 0 ? (
@@ -367,14 +412,28 @@ export default function EventDetailManagement() {
                 </div>
               ) : tickets.map((t: any) => {
                 const pct = Math.min(100, Math.round(((t.sold || 0) / (t.quantity || 1)) * 100));
+                const hasDiscount = t.discountPrice !== null && t.discountPrice !== undefined && t.discountEndsAt && new Date(t.discountEndsAt) > new Date();
+                const daysRemaining = hasDiscount ? Math.max(1, Math.ceil((new Date(t.discountEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+
                 return (
                   <div key={t.id} className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-black text-gray-900">{t.name}</span>
-                        <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md">
-                          {t.price === 0 ? 'Free' : `₦${t.price.toLocaleString()}`}
-                        </span>
+                        {hasDiscount ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-gray-400 line-through">
+                              ₦{t.price.toLocaleString()}
+                            </span>
+                            <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                              ₦{t.discountPrice.toLocaleString()} ({daysRemaining}d left)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md">
+                            {t.price === 0 ? 'Free' : `₦${t.price.toLocaleString()}`}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="h-2 w-32 bg-gray-100 rounded-full overflow-hidden">
@@ -383,9 +442,32 @@ export default function EventDetailManagement() {
                         <span className="text-xs font-semibold text-gray-400">{pct}% Sold ({t.sold} / {t.quantity})</span>
                       </div>
                     </div>
-                    <div className="text-right sm:text-right shrink-0">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Revenue</p>
-                      <p className="text-sm font-black text-emerald-600">₦{((t.sold || 0) * (t.price || 0)).toLocaleString()}</p>
+
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Revenue</p>
+                        <p className="text-sm font-black text-emerald-600">
+                          ₦{((t.sold || 0) * (hasDiscount ? t.discountPrice : t.price || 0)).toLocaleString()}
+                        </p>
+                      </div>
+
+                      {t.price > 0 && (
+                        <button
+                          onClick={() => {
+                            setSelectedTicketForDiscount(t);
+                            setDiscountPriceInput(t.discountPrice ? String(t.discountPrice) : '');
+                            setDiscountDaysInput(daysRemaining ? String(daysRemaining) : '5');
+                            setShowDiscountModal(true);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${
+                            hasDiscount
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                              : 'bg-gray-100 text-gray-700 hover:bg-[#f05537] hover:text-white'
+                          }`}
+                        >
+                          🏷️ {hasDiscount ? 'Edit Discount' : 'Add Discount'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -553,6 +635,111 @@ export default function EventDetailManagement() {
           </table>
         </div>
       </div>
+
+      {/* ── DISCOUNT CONFIGURATION MODAL ─────────────────────────── */}
+      {showDiscountModal && selectedTicketForDiscount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-white border border-gray-150 p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+              <div>
+                <h3 className="text-base font-black text-gray-900">
+                  Manage Discount: {selectedTicketForDiscount.name}
+                </h3>
+                <p className="text-xs text-gray-400 font-semibold mt-0.5">
+                  Regular Price: ₦{Number(selectedTicketForDiscount.price).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDiscountModal(false)}
+                className="h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-sm font-bold transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {discountMessage && (
+              <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-3 text-xs font-bold text-red-600">
+                {discountMessage}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black uppercase text-gray-500 tracking-wider mb-1.5">
+                  Discounted Price (₦) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">₦</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={selectedTicketForDiscount.price - 1}
+                    value={discountPriceInput}
+                    onChange={(e) => setDiscountPriceInput(e.target.value)}
+                    placeholder={`Less than ₦${selectedTicketForDiscount.price.toLocaleString()}`}
+                    className="h-11 w-full rounded-xl border border-gray-200 pl-8 pr-4 text-sm font-bold text-gray-900 outline-none focus:border-[#f05537] focus:ring-2 focus:ring-[#f05537]/10"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1 font-medium">
+                  Attendees will see a dash/strikethrough on the regular price.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-gray-500 tracking-wider mb-1.5">
+                  Duration (How many days until it expires?) *
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={discountDaysInput}
+                    onChange={(e) => setDiscountDaysInput(e.target.value)}
+                    placeholder="e.g. 5"
+                    className="h-11 w-28 rounded-xl border border-gray-200 px-3 text-center text-sm font-bold text-gray-900 outline-none focus:border-[#f05537] focus:ring-2 focus:ring-[#f05537]/10"
+                  />
+                  <span className="text-xs font-bold text-gray-500">Days from today</span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1 font-medium">
+                  After this period, the ticket will automatically revert back to ₦{selectedTicketForDiscount.price.toLocaleString()}.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+              {selectedTicketForDiscount.discountPrice ? (
+                <button
+                  type="button"
+                  onClick={() => handleSaveDiscount(true)}
+                  disabled={savingDiscount}
+                  className="px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-black transition disabled:opacity-50"
+                >
+                  Remove Discount
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscountModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveDiscount(false)}
+                  disabled={savingDiscount || !discountPriceInput || !discountDaysInput}
+                  className="px-5 py-2.5 rounded-xl bg-[#f05537] hover:bg-[#d1410c] text-white text-xs font-black uppercase tracking-wider transition shadow-sm disabled:opacity-50"
+                >
+                  {savingDiscount ? 'Saving...' : 'Apply Discount'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
