@@ -607,6 +607,10 @@ export default function AdminConsole() {
                         { label: "Account ID", val: inspectItem.data.id, mono: true },
                         { label: "User Role", val: inspectItem.data.role, badge: true },
                         { label: "Wallet Balance", val: formatNaira(inspectItem.data.walletBalance || 0), highlight: true },
+                        ...(inspectItem.data.totalRevenue !== undefined ? [
+                          { label: "Total Ticket Revenue", val: formatNaira(inspectItem.data.totalRevenue || 0) },
+                          { label: "Tickets Sold", val: `${inspectItem.data.ticketsSold || inspectItem.data.buyers?.length || 0} tickets sold`, highlight: true }
+                        ] : []),
                         { label: "Settlement Bank", val: inspectItem.data.bankName || "Not Configured" },
                         { 
                           label: "Account Number", 
@@ -665,6 +669,86 @@ export default function AdminConsole() {
                         >
                           {inspectItem.data.isBanned ? "Unban Account" : "Ban User"}
                         </button>
+                      )}
+                    </div>
+
+                    {/* TICKETS SOLD & ATTENDEE BUYER DETAILS */}
+                    <div className="pt-6 border-t border-slate-200 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>🎟️</span> Tickets Sold & Attendees
+                          </h4>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {inspectItem.data.ticketsSold || inspectItem.data.buyers?.length || 0} tickets sold across all hosted events
+                          </p>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {inspectItem.data.ticketsSold || inspectItem.data.buyers?.length || 0} sold
+                        </span>
+                      </div>
+
+                      {(!inspectItem.data.buyers || inspectItem.data.buyers.length === 0) ? (
+                        <div className="text-center py-6 px-4 bg-slate-50 rounded-2xl border border-slate-200 text-slate-400 text-xs font-semibold">
+                          <p className="text-xl mb-1">🎫</p>
+                          <p className="text-slate-600 font-bold">No tickets sold yet</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Attendees will show up here once purchases are completed.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                          {inspectItem.data.buyers.map((buyer: any, idx: number) => (
+                            <div
+                              key={buyer.orderId ? `${buyer.orderId}-${idx}` : idx}
+                              className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-slate-300 transition-all space-y-2.5"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-black text-xs text-slate-900">{buyer.buyerName}</p>
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                      {buyer.quantity}x {buyer.ticketName}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] font-bold text-slate-500 mt-0.5 truncate max-w-[240px]">
+                                    📍 {buyer.eventTitle}
+                                  </p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 block">
+                                    {formatNaira(buyer.pricePaid ?? 0)}
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 mt-0.5 block">
+                                    Paid
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[10px]">
+                                <div className="space-y-0.5">
+                                  <span className="text-slate-400 block font-semibold">Email:</span>
+                                  <span className="text-slate-700 font-medium truncate block font-mono" title={buyer.buyerEmail}>
+                                    {buyer.buyerEmail}
+                                  </span>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <span className="text-slate-400 block font-semibold">Phone:</span>
+                                  <span className="text-slate-700 font-mono font-medium block">
+                                    {buyer.buyerPhone || "N/A"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1.5 text-[9px] text-slate-400 font-medium">
+                                <span>Purchased {buyer.createdAt ? new Date(buyer.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}</span>
+                                {buyer.orderId && (
+                                  <span className="font-mono text-[9px] text-slate-400 truncate max-w-[120px]" title={buyer.orderId}>
+                                    Ref: {buyer.orderId.substring(0, 8)}...
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
 
@@ -1321,6 +1405,7 @@ export default function AdminConsole() {
                           <th className="px-6 py-4">Bank Name</th>
                           <th className="px-6 py-4">Account Number</th>
                           <th className="px-6 py-4">Money in Wallet</th>
+                          <th className="px-6 py-4">Tickets Sold</th>
                           <th className="px-6 py-4">Total Withdrawn</th>
                           <th className="px-6 py-4">Pending Payouts</th>
                           <th className="px-6 py-4">Events</th>
@@ -1422,6 +1507,17 @@ export default function AdminConsole() {
                               <td className="px-6 py-4">
                                 <span className="font-black text-sm text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 inline-block">
                                   {formatNaira(org.walletBalance)}
+                                </span>
+                              </td>
+
+                              {/* Tickets Sold */}
+                              <td className="px-6 py-4">
+                                <span className={`inline-flex items-center gap-1 font-bold text-xs ${
+                                  (org.ticketsSold || org.buyers?.length || 0) > 0
+                                    ? "text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 font-black"
+                                    : "text-slate-400"
+                                }`}>
+                                  🎟️ {org.ticketsSold || org.buyers?.length || 0} sold
                                 </span>
                               </td>
 
