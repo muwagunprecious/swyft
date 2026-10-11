@@ -26,17 +26,19 @@ export default function AdminConsole() {
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [organizers, setOrganizers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // UI States
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'events' | 'payouts' | 'tickets'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'organizers' | 'events' | 'payouts' | 'tickets'>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Search Filter States
   const [userSearch, setUserSearch] = useState("");
+  const [organizerSearch, setOrganizerSearch] = useState("");
   const [eventSearch, setEventSearch] = useState("");
   const [payoutSearch, setPayoutSearch] = useState("");
   const [ticketSearch, setTicketSearch] = useState("");
@@ -138,9 +140,10 @@ export default function AdminConsole() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      const [statsRes, usersRes, eventsRes, payoutsRes, ticketsRes] = await Promise.all([
+      const [statsRes, usersRes, organizersRes, eventsRes, payoutsRes, ticketsRes] = await Promise.all([
         api.get("/admin/stats"),
         api.get("/admin/users"),
+        api.get("/admin/organizers"),
         api.get("/admin/events"),
         api.get("/admin/payouts"),
         api.get("/admin/tickets"),
@@ -149,6 +152,7 @@ export default function AdminConsole() {
       setStats(statsRes.data.stats);
       setRecentOrders(statsRes.data.recentOrders);
       setUsers(usersRes.data);
+      setOrganizers(organizersRes.data);
       setEvents(eventsRes.data);
       setPayouts(payoutsRes.data);
       setTickets(ticketsRes.data);
@@ -277,6 +281,16 @@ export default function AdminConsole() {
       u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.role?.toLowerCase().includes(userSearch.toLowerCase()) ||
       (u.university && u.university.toLowerCase().includes(userSearch.toLowerCase()))
+  );
+
+  const filteredOrganizers = organizers.filter(
+    (o) =>
+      o.name?.toLowerCase().includes(organizerSearch.toLowerCase()) ||
+      o.email?.toLowerCase().includes(organizerSearch.toLowerCase()) ||
+      o.phone?.toLowerCase().includes(organizerSearch.toLowerCase()) ||
+      o.bankName?.toLowerCase().includes(organizerSearch.toLowerCase()) ||
+      o.accountNumber?.toLowerCase().includes(organizerSearch.toLowerCase()) ||
+      o.bankCode?.toLowerCase().includes(organizerSearch.toLowerCase())
   );
 
   const filteredEvents = events.filter(
@@ -415,15 +429,20 @@ export default function AdminConsole() {
                       {[
                         { label: "Account ID", val: inspectItem.data.id, mono: true },
                         { label: "User Role", val: inspectItem.data.role, badge: true },
+                        { label: "Wallet Balance", val: formatNaira(inspectItem.data.walletBalance || 0), highlight: true },
+                        { label: "Settlement Bank", val: inspectItem.data.bankName || "Not Configured" },
+                        { label: "Account Number", val: inspectItem.data.accountNumber || "Not Configured", mono: true },
+                        ...(inspectItem.data.bankCode ? [{ label: "Bank Code", val: inspectItem.data.bankCode, mono: true }] : []),
+                        ...(inspectItem.data.subaccountCode ? [{ label: "Paystack Subaccount", val: inspectItem.data.subaccountCode, mono: true }] : []),
                         { label: "Phone Number", val: inspectItem.data.phone || "Not Configured" },
                         { label: "Campuses / College", val: inspectItem.data.university || "None" },
                         { label: "Verified Status", val: inspectItem.data.isVerified ? "Verified User" : "Unverified" },
                         { label: "Suspension Status", val: inspectItem.data.isBanned ? "Suspended Account" : "Active status" },
                         { label: "Registration Date", val: inspectItem.data.createdAt ? new Date(inspectItem.data.createdAt).toLocaleString() : "N/A" },
-                      ].map((item, idx) => (
+                      ].map((item: any, idx) => (
                         <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
                           <span className="text-slate-400">{item.label}</span>
-                          <span className={`text-slate-800 ${item.mono ? "font-mono text-[10px]" : ""} ${item.badge ? "px-2 py-0.5 rounded text-[10px] bg-slate-500/10 border border-slate-500/20 uppercase" : ""}`}>
+                          <span className={`text-slate-800 ${item.mono ? "font-mono text-[10px]" : ""} ${item.highlight ? "font-black text-emerald-600 text-sm" : ""} ${item.badge ? "px-2 py-0.5 rounded text-[10px] bg-slate-500/10 border border-slate-500/20 uppercase" : ""}`}>
                             {item.val}
                           </span>
                         </div>
@@ -767,6 +786,7 @@ export default function AdminConsole() {
             {[
               { id: "overview", label: "Overview", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg> },
               { id: "users", label: "Users Directory", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg> },
+              { id: "organizers", label: "Organizer Wallets", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /><circle cx="16" cy="15" r="1.5" /><path d="M6 15h4" /></svg> },
               { id: "events", label: "Event Moderation", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg> },
               { id: "payouts", label: "Payout Operations", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M17 9H7" /></svg> },
               { id: "tickets", label: "Ticket Audit Logs", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg> },
@@ -932,9 +952,10 @@ export default function AdminConsole() {
 
                       <div className="grid gap-3 text-xs">
                         {[
+                          { label: "Active Organizer Wallets", count: organizers.length, color: "text-emerald-600", tab: "organizers" },
+                          { label: "Pending Payout Requests", count: payouts.filter(p => p.status === 'PENDING').length, color: "text-[#1565ff]", tab: "payouts" },
                           { label: "Suspended Accounts", count: users.filter(u => u.isBanned).length, color: "text-[#f05537]", tab: "users" },
                           { label: "Deactivated Events", count: events.filter(e => e.isSuspended).length, color: "text-amber-600", tab: "events" },
-                          { label: "Pending Payouts Requests", count: payouts.filter(p => p.status === 'PENDING').length, color: "text-[#1565ff]", tab: "payouts" },
                         ].map((dial, idx) => (
                           <button
                             key={idx}
@@ -1034,6 +1055,188 @@ export default function AdminConsole() {
                         ) : (
                           <tr>
                             <td colSpan={5} className="text-center py-16 text-slate-400 font-bold">No matches found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* ORGANIZERS & WALLETS DIRECTORY PANEL CONTENT */}
+              {activeTab === "organizers" && (
+                <div className="space-y-6 animate-fadeIn">
+                  {/* Top Financial Stat Counter Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Organizers</p>
+                      <h3 className="text-2xl font-black text-slate-900 mt-1">{organizers.length}</h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">With active/registered wallets</p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Money in Wallets</p>
+                      <h3 className="text-2xl font-black text-emerald-600 mt-1">
+                        {formatNaira(organizers.reduce((sum, o) => sum + (o.walletBalance || 0), 0))}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Cumulative available balance</p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Withdrawn</p>
+                      <h3 className="text-2xl font-black text-slate-800 mt-1">
+                        {formatNaira(organizers.reduce((sum, o) => sum + (o.totalWithdrawn || 0), 0))}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Completed settlements</p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pending Withdrawals</p>
+                      <h3 className="text-2xl font-black text-amber-500 mt-1">
+                        {formatNaira(organizers.reduce((sum, o) => sum + (o.pendingWithdrawals || 0), 0))}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Awaiting release approval</p>
+                    </div>
+                  </div>
+
+                  {/* Search Bar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <input
+                      id="organizer-search"
+                      type="text"
+                      placeholder="Search organizer by name, email, phone, bank name, or account number..."
+                      value={organizerSearch}
+                      onChange={(e) => setOrganizerSearch(e.target.value)}
+                      className="w-full sm:max-w-lg rounded-xl bg-white border border-slate-200 focus:border-[#f05537] px-4 py-3 text-xs font-semibold text-slate-900 outline-none transition-all shadow-sm"
+                    />
+                    <span className="text-xs font-bold text-slate-400">
+                      Showing {filteredOrganizers.length} of {organizers.length} organizers
+                    </span>
+                  </div>
+
+                  {/* Main Organizers & Wallets Directory Table */}
+                  <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xl">
+                    <table className="w-full border-collapse text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-white text-slate-400 font-bold">
+                          <th className="px-6 py-4">Organizer</th>
+                          <th className="px-6 py-4">Bank Name</th>
+                          <th className="px-6 py-4">Account Number</th>
+                          <th className="px-6 py-4">Money in Wallet</th>
+                          <th className="px-6 py-4">Total Withdrawn</th>
+                          <th className="px-6 py-4">Pending Payouts</th>
+                          <th className="px-6 py-4">Events</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 font-semibold text-slate-800">
+                        {filteredOrganizers.length > 0 ? (
+                          filteredOrganizers.map((org) => (
+                            <tr
+                              key={org.id}
+                              className="hover:bg-slate-50/70 transition-all cursor-pointer"
+                              onClick={() => setInspectItem({ show: true, type: "user", data: org })}
+                            >
+                              {/* Organizer Info */}
+                              <td className="px-6 py-4">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-black text-slate-900">{org.name}</p>
+                                    {org.isBanned && (
+                                      <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-rose-100 text-rose-600">
+                                        Suspended
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">{org.email}</p>
+                                  {org.phone && org.phone !== 'N/A' && (
+                                    <p className="text-[10px] text-slate-400">{org.phone}</p>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Bank Name */}
+                              <td className="px-6 py-4">
+                                <span className="font-bold text-slate-800">
+                                  {org.bankName}
+                                </span>
+                              </td>
+
+                              {/* Account Number with Copy Button */}
+                              <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-2">
+                                  <code className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 select-all">
+                                    {org.accountNumber}
+                                  </code>
+                                  {org.accountNumber && org.accountNumber !== 'Not Provided' && org.accountNumber !== 'Not Set' && (
+                                    <button
+                                      title="Copy account number"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(org.accountNumber);
+                                        showToast(`Account number ${org.accountNumber} copied to clipboard!`, "success");
+                                      }}
+                                      className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition"
+                                    >
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                </div>
+                                {org.subaccountCode && (
+                                  <span className="text-[9px] font-mono text-indigo-600 block mt-1">
+                                    Subaccount: {org.subaccountCode}
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Wallet Balance */}
+                              <td className="px-6 py-4">
+                                <span className="font-black text-sm text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 inline-block">
+                                  {formatNaira(org.walletBalance)}
+                                </span>
+                              </td>
+
+                              {/* Total Withdrawn */}
+                              <td className="px-6 py-4 text-slate-600 font-bold">
+                                {formatNaira(org.totalWithdrawn)}
+                              </td>
+
+                              {/* Pending Payouts */}
+                              <td className="px-6 py-4">
+                                {org.pendingWithdrawals > 0 ? (
+                                  <span className="font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200">
+                                    {formatNaira(org.pendingWithdrawals)} pending
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-xs">None</span>
+                                )}
+                              </td>
+
+                              {/* Events Count */}
+                              <td className="px-6 py-4">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200">
+                                  {org.eventsCount} events
+                                </span>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => setInspectItem({ show: true, type: "user", data: org })}
+                                  className="rounded-lg px-3 py-1.5 text-[10px] font-black bg-slate-900 text-white hover:bg-slate-800 transition active:scale-95"
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={8} className="text-center py-16 text-slate-400 font-bold">
+                              No organizers found matching your search.
+                            </td>
                           </tr>
                         )}
                       </tbody>
