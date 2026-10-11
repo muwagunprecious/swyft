@@ -140,7 +140,7 @@ export default function AdminConsole() {
   const loadData = async () => {
     try {
       setLoadingData(true);
-      const [statsRes, usersRes, organizersRes, eventsRes, payoutsRes, ticketsRes] = await Promise.all([
+      const [statsResult, usersResult, organizersResult, eventsResult, payoutsResult, ticketsResult] = await Promise.allSettled([
         api.get("/admin/stats"),
         api.get("/admin/users"),
         api.get("/admin/organizers"),
@@ -149,13 +149,28 @@ export default function AdminConsole() {
         api.get("/admin/tickets"),
       ]);
 
-      setStats(statsRes.data.stats);
-      setRecentOrders(statsRes.data.recentOrders);
-      setUsers(usersRes.data);
-      setOrganizers(organizersRes.data);
-      setEvents(eventsRes.data);
-      setPayouts(payoutsRes.data);
-      setTickets(ticketsRes.data);
+      const loadedUsers = usersResult.status === "fulfilled" ? usersResult.value.data : [];
+      setUsers(loadedUsers);
+
+      if (statsResult.status === "fulfilled") {
+        setStats(statsResult.value.data.stats || {});
+        setRecentOrders(statsResult.value.data.recentOrders || []);
+      }
+
+      if (organizersResult.status === "fulfilled") {
+        setOrganizers(organizersResult.value.data || []);
+      } else {
+        // Graceful fallback: extract organizers from users list if endpoint was delayed
+        console.warn("Organizers endpoint fallback to users list:", organizersResult.reason);
+        const fallbackOrganizers = (loadedUsers || []).filter(
+          (u: any) => u.role === "ORGANIZER" || u.accountNumber || (typeof u.walletBalance === 'number' && u.walletBalance > 0)
+        );
+        setOrganizers(fallbackOrganizers);
+      }
+
+      if (eventsResult.status === "fulfilled") setEvents(eventsResult.value.data || []);
+      if (payoutsResult.status === "fulfilled") setPayouts(payoutsResult.value.data || []);
+      if (ticketsResult.status === "fulfilled") setTickets(ticketsResult.value.data || []);
     } catch (err) {
       console.error("Stats fetching failed:", err);
       showToast("Sync failed. Check database connections.", "error");
