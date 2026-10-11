@@ -59,7 +59,9 @@ function TrackTicketContent() {
   }) : "N/A";
   
   const subtotal = tickets.reduce((acc, t) => acc + (t.price * (t.quantity || 1)), 0);
-  const serviceFee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  const platformFee = subtotal > 0 ? Math.round(subtotal * 0.04) : 0;
+  const paystackFee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  const serviceFee = platformFee + paystackFee;
   const totalPaid = subtotal + serviceFee;
 
   return (
@@ -175,8 +177,12 @@ function TrackTicketContent() {
                       <span className="text-[#fafafa]">₦{subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-[#9ca3af]">
-                      <span>Paystack Processing (1.5%)</span>
-                      <span className="text-[#fafafa]">₦{serviceFee.toLocaleString()}</span>
+                      <span>Platform Service Fee (4%)</span>
+                      <span className="text-[#fafafa]">₦{platformFee.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-[#9ca3af]">
+                      <span>Paystack Payment Fee (1.5%)</span>
+                      <span className="text-[#fafafa]">₦{paystackFee.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm font-medium border-t border-[#374151] pt-2 mt-1">
                       <span className="text-[#fafafa]">Total Paid</span>

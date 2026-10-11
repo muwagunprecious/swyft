@@ -78,8 +78,13 @@ export default function CheckoutForm() {
      const qty = Number(item.qty) || 0;
      return acc + (price * qty);
    }, 0);
-  // Paystack processing fee: 1.5%
-  const fee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+
+  // Platform service fee: 4% (goes to platform)
+  const platformFee = subtotal > 0 ? Math.round(subtotal * 0.04) : 0;
+  // Paystack processing fee: 1.5% (goes to Paystack payment gateway)
+  const paystackFee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  // Total fees and grand total
+  const fee = platformFee + paystackFee;
   const total = subtotal + fee;
 
   // Retrieve subaccount code from the first cart item (all items belong to the same event)
@@ -97,8 +102,8 @@ export default function CheckoutForm() {
     config.subaccount = subaccountCode;
     // Platform bears Paystack's transaction fee so the organizer gets exactly their subtotal
     config.bearer = 'account';
-    // The platform takes the calculated OTIX fee flat
-    config.transaction_charge = fee * 100;
+    // Platform retains the platform service fee (4%)
+    config.transaction_charge = platformFee * 100;
   }
 
   const initializePayment = usePaystackPayment(config);
@@ -437,7 +442,7 @@ export default function CheckoutForm() {
                     ₦{total.toLocaleString()}
                   </p>
                   <p className="text-xs text-[#9ca3af] mt-2">
-                    {fee > 0 ? `Includes ₦${fee.toLocaleString()} Paystack processing fee (1.5%)` : 'No processing fees'}
+                    {fee > 0 ? `Includes ₦${platformFee.toLocaleString()} platform fee (4%) & ₦${paystackFee.toLocaleString()} Paystack fee (1.5%)` : 'No processing fees'}
                   </p>
                 </div>
 
@@ -531,8 +536,12 @@ export default function CheckoutForm() {
                 <span className="font-medium text-[#fafafa]">₦{subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#9ca3af]">Paystack Processing (1.5%)</span>
-                <span className="font-medium text-[#fafafa]">₦{fee.toLocaleString()}</span>
+                <span className="text-[#9ca3af]">Platform Service Fee (4%)</span>
+                <span className="font-medium text-[#fafafa]">₦{platformFee.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#9ca3af]">Paystack Payment Fee (1.5%)</span>
+                <span className="font-medium text-[#fafafa]">₦{paystackFee.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-[#374151] text-sm">
                 <span className="font-medium text-[#fafafa]">Total</span>

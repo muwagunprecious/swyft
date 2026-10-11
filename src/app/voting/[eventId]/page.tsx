@@ -144,9 +144,11 @@ export default function EventVotingPage() {
     }
   };
 
-  // Calculate Split Fees (Paystack 1.5%)
+  // Calculate Split Fees (4% Platform fee + 1.5% Paystack fee)
   const subtotal = (event?.voteCost || 50) * paidVoteQty;
-  const fee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  const platformFee = subtotal > 0 ? Math.round(subtotal * 0.04) : 0;
+  const paystackFee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  const fee = platformFee + paystackFee;
   const total = subtotal + fee;
   const subaccountCode = event?.organizer?.subaccountCode;
 
@@ -160,7 +162,8 @@ export default function EventVotingPage() {
   if (subaccountCode) {
     config.subaccount = subaccountCode;
     config.bearer = 'account';
-    config.transaction_charge = fee * 100;
+    // Platform retains the platform service fee (4%)
+    config.transaction_charge = platformFee * 100;
   }
 
   const initializePayment = usePaystackPayment(config);
@@ -354,16 +357,20 @@ export default function EventVotingPage() {
             <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
                 <span>Subtotal</span>
-                <span>{formatNaira((event.voteCost || 50) * paidVoteQty)}</span>
+                <span>{formatNaira(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-                <span>Paystack Fee (1.5%)</span>
-                <span>{formatNaira(Math.round(((event.voteCost || 50) * paidVoteQty) * 0.015))}</span>
+                <span>Platform Service Fee (4%)</span>
+                <span>{formatNaira(platformFee)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
+                <span>Paystack Payment Fee (1.5%)</span>
+                <span>{formatNaira(paystackFee)}</span>
               </div>
               <div className="flex items-center justify-between font-black text-gray-900 text-sm border-t border-gray-100 pt-2">
                 <span>Grand Total</span>
                 <span className="text-[#f05537]">
-                  {formatNaira(((event.voteCost || 50) * paidVoteQty) + Math.round(((event.voteCost || 50) * paidVoteQty) * 0.015))}
+                  {formatNaira(total)}
                 </span>
               </div>
             </div>

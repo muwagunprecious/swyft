@@ -34,7 +34,9 @@ export default function Cart() {
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
   const subtotal = items.reduce((acc, i) => acc + i.price * i.qty, 0);
-  const fee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  const platformFee = subtotal > 0 ? Math.round(subtotal * 0.04) : 0;
+  const paystackFee = subtotal > 0 ? Math.round(subtotal * 0.015) : 0;
+  const fee = platformFee + paystackFee;
   const discount = promoApplied ? -1000 : 0;
   const total = subtotal + fee + discount;
 
@@ -99,7 +101,8 @@ export default function Cart() {
                 <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {[
                     { label: 'Subtotal', value: `₦${subtotal.toLocaleString()}` },
-                    { label: 'Paystack Processing (1.5%)', value: `₦${fee.toLocaleString()}` },
+                    { label: 'Platform Service Fee (4%)', value: `₦${platformFee.toLocaleString()}` },
+                    { label: 'Paystack Payment Fee (1.5%)', value: `₦${paystackFee.toLocaleString()}` },
                     ...(promoApplied ? [{ label: 'Promo (WELCOME)', value: '–₦1,000', green: true }] : []),
                   ].map((row) => (
                     <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
