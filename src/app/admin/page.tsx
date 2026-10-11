@@ -109,6 +109,22 @@ export default function AdminConsole() {
   const [inspectUserAuditTrail, setInspectUserAuditTrail] = useState<any[] | null>(null);
   const [loadingAuditTrail, setLoadingAuditTrail] = useState(false);
 
+  // Flow State 4: Edit Organizer Bank Details Modal
+  const [editBankModal, setEditBankModal] = useState<{
+    show: boolean;
+    userId: string;
+    userName: string;
+    bankName: string;
+    accountNumber: string;
+  }>({
+    show: false,
+    userId: "",
+    userName: "",
+    bankName: "",
+    accountNumber: "",
+  });
+  const [savingBankDetails, setSavingBankDetails] = useState(false);
+
   // Verify auth on load
   useEffect(() => {
     const token = localStorage.getItem("otix_token");
@@ -289,6 +305,44 @@ export default function AdminConsole() {
     }
   };
 
+  const handleSaveOrganizerBank = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editBankModal.bankName || !editBankModal.accountNumber) {
+      showToast("Please provide both bank name and account number", "error");
+      return;
+    }
+    const cleanNum = editBankModal.accountNumber.trim().replace(/\D/g, "");
+    const formattedNum = cleanNum.length === 11 && cleanNum.startsWith("0") ? cleanNum.slice(1) : cleanNum;
+    if (formattedNum.length !== 10) {
+      showToast("Account number must be 10 digits", "error");
+      return;
+    }
+    try {
+      setSavingBankDetails(true);
+      const res = await api.put(`/admin/organizers/${editBankModal.userId}/bank-details`, {
+        bankName: editBankModal.bankName.trim(),
+        accountNumber: formattedNum,
+      });
+      showToast(res.data.message || "Bank details updated successfully", "success");
+      setEditBankModal((prev) => ({ ...prev, show: false }));
+      loadData();
+      if (inspectItem.show && inspectItem.data?.id === editBankModal.userId) {
+        setInspectItem((prev) => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            bankName: editBankModal.bankName.trim(),
+            accountNumber: formattedNum,
+          },
+        }));
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.message || "Failed to update bank details", "error");
+    } finally {
+      setSavingBankDetails(false);
+    }
+  };
+
   // Lists filtering
   const filteredUsers = users.filter(
     (u) =>
@@ -406,6 +460,114 @@ export default function AdminConsole() {
         </div>
       )}
 
+      {/* EDIT / SET ORGANIZER SETTLEMENT BANK ACCOUNT MODAL */}
+      {editBankModal.show && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl border border-slate-300 bg-white p-6 md:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#f05537]">
+                  ADMIN SETTLEMENT SETTINGS
+                </span>
+                <h3 className="text-base font-black text-slate-900 mt-1">
+                  Organizer Bank Details
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Update account for <strong className="text-slate-800">{editBankModal.userName}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setEditBankModal((prev) => ({ ...prev, show: false }))}
+                className="h-8 w-8 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOrganizerBank} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  Bank Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. OPay, PalmPay, GTBank, Access Bank, Moniepoint"
+                  list="bank-suggestions"
+                  value={editBankModal.bankName}
+                  onChange={(e) => setEditBankModal((prev) => ({ ...prev, bankName: e.target.value }))}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-900 outline-none focus:border-[#f05537] focus:bg-white transition"
+                />
+                <datalist id="bank-suggestions">
+                  <option value="OPay" />
+                  <option value="PalmPay" />
+                  <option value="Moniepoint" />
+                  <option value="Kuda Bank" />
+                  <option value="Guaranty Trust Bank (GTB)" />
+                  <option value="Access Bank" />
+                  <option value="United Bank for Africa (UBA)" />
+                  <option value="Zenith Bank" />
+                  <option value="First Bank of Nigeria" />
+                  <option value="Stanbic IBTC" />
+                  <option value="Wema Bank" />
+                  <option value="FCMB" />
+                  <option value="Fidelity Bank" />
+                </datalist>
+
+                {/* Quick chip selects */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {["OPay", "PalmPay", "Moniepoint", "GTBank", "Access Bank", "Kuda"].map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setEditBankModal((prev) => ({ ...prev, bankName: b }))}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                  10-Digit Account Number
+                </label>
+                <input
+                  type="text"
+                  maxLength={11}
+                  placeholder="e.g. 8144065785 (or 08144065785)"
+                  value={editBankModal.accountNumber}
+                  onChange={(e) => setEditBankModal((prev) => ({ ...prev, accountNumber: e.target.value.replace(/[^0-9]/g, "") }))}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-mono font-bold text-slate-900 outline-none focus:border-[#f05537] focus:bg-white transition"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Enter 10-digit NUBAN. For OPay/PalmPay phone numbers, 11-digit numbers starting with 0 are automatically normalized.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEditBankModal((prev) => ({ ...prev, show: false }))}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingBankDetails || !editBankModal.bankName || editBankModal.accountNumber.length < 10}
+                  className="rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-5 py-2.5 text-xs font-black shadow-lg transition active:scale-95"
+                >
+                  {savingBankDetails ? "Saving Details..." : "Save Bank Details"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* DETAIL INSPECTION DRAWER OVERLAY */}
       {inspectItem.show && (
         <div className="fixed inset-0 z-[80] flex justify-end bg-black/50 backdrop-blur-xs">
@@ -446,7 +608,25 @@ export default function AdminConsole() {
                         { label: "User Role", val: inspectItem.data.role, badge: true },
                         { label: "Wallet Balance", val: formatNaira(inspectItem.data.walletBalance || 0), highlight: true },
                         { label: "Settlement Bank", val: inspectItem.data.bankName || "Not Configured" },
-                        { label: "Account Number", val: inspectItem.data.accountNumber || "Not Configured", mono: true },
+                        { 
+                          label: "Account Number", 
+                          val: inspectItem.data.accountNumber || "Not Configured", 
+                          mono: true,
+                          action: (
+                            <button
+                              onClick={() => setEditBankModal({
+                                show: true,
+                                userId: inspectItem.data.id,
+                                userName: inspectItem.data.name,
+                                bankName: inspectItem.data.bankName && inspectItem.data.bankName !== "Not Provided" ? inspectItem.data.bankName : "",
+                                accountNumber: inspectItem.data.accountNumber && inspectItem.data.accountNumber !== "Not Provided" && inspectItem.data.accountNumber !== "Not Configured" ? inspectItem.data.accountNumber : "",
+                              })}
+                              className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-900 text-white hover:bg-slate-800 transition active:scale-95 shrink-0"
+                            >
+                              {inspectItem.data.accountNumber && inspectItem.data.accountNumber !== "Not Provided" && inspectItem.data.accountNumber !== "Not Configured" ? "Edit Bank" : "+ Set Bank"}
+                            </button>
+                          )
+                        },
                         ...(inspectItem.data.bankCode ? [{ label: "Bank Code", val: inspectItem.data.bankCode, mono: true }] : []),
                         ...(inspectItem.data.subaccountCode ? [{ label: "Paystack Subaccount", val: inspectItem.data.subaccountCode, mono: true }] : []),
                         { label: "Phone Number", val: inspectItem.data.phone || "Not Configured" },
@@ -457,9 +637,12 @@ export default function AdminConsole() {
                       ].map((item: any, idx) => (
                         <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
                           <span className="text-slate-400">{item.label}</span>
-                          <span className={`text-slate-800 ${item.mono ? "font-mono text-[10px]" : ""} ${item.highlight ? "font-black text-emerald-600 text-sm" : ""} ${item.badge ? "px-2 py-0.5 rounded text-[10px] bg-slate-500/10 border border-slate-500/20 uppercase" : ""}`}>
-                            {item.val}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-slate-800 ${item.mono ? "font-mono text-[10px]" : ""} ${item.highlight ? "font-black text-emerald-600 text-sm" : ""} ${item.badge ? "px-2 py-0.5 rounded text-[10px] bg-slate-500/10 border border-slate-500/20 uppercase" : ""}`}>
+                              {item.val}
+                            </span>
+                            {item.action}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1177,13 +1360,13 @@ export default function AdminConsole() {
                                 </span>
                               </td>
 
-                              {/* Account Number with Copy Button */}
+                              {/* Account Number with Copy & Edit Buttons */}
                               <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-center gap-2">
-                                  <code className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 select-all">
-                                    {org.accountNumber}
-                                  </code>
-                                  {org.accountNumber && org.accountNumber !== 'Not Provided' && org.accountNumber !== 'Not Set' && (
+                                {org.accountNumber && org.accountNumber !== 'Not Provided' && org.accountNumber !== 'Not Set' && org.accountNumber !== '—' ? (
+                                  <div className="flex items-center gap-2">
+                                    <code className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 select-all">
+                                      {org.accountNumber}
+                                    </code>
                                     <button
                                       title="Copy account number"
                                       onClick={() => {
@@ -1197,8 +1380,37 @@ export default function AdminConsole() {
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                       </svg>
                                     </button>
-                                  )}
-                                </div>
+                                    <button
+                                      title="Edit settlement bank details"
+                                      onClick={() => setEditBankModal({
+                                        show: true,
+                                        userId: org.id,
+                                        userName: org.name,
+                                        bankName: org.bankName && org.bankName !== 'Not Provided' ? org.bankName : '',
+                                        accountNumber: org.accountNumber,
+                                      })}
+                                      className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition"
+                                    >
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M12 20h9" />
+                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setEditBankModal({
+                                      show: true,
+                                      userId: org.id,
+                                      userName: org.name,
+                                      bankName: org.bankName && org.bankName !== 'Not Provided' ? org.bankName : '',
+                                      accountNumber: '',
+                                    })}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition active:scale-95"
+                                  >
+                                    <span>+</span> Set Account
+                                  </button>
+                                )}
                                 {org.subaccountCode && (
                                   <span className="text-[9px] font-mono text-indigo-600 block mt-1">
                                     Subaccount: {org.subaccountCode}
