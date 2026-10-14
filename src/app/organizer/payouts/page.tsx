@@ -42,17 +42,27 @@ export default function PayoutsPage() {
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [savedDetails, setSavedDetails] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const fetchBankDetails = async () => {
     try {
       setFetching(true);
-      const res = await api.get('/organizer/bank-details');
-      if (res.data?.accountNumber) {
-        setSavedDetails(res.data);
-        setBankName(res.data.bankName || "");
-        setAccountNumber(res.data.accountNumber || "");
-        if (res.data.bankCode) setBankCode(res.data.bankCode);
-        if (res.data.name) setAccountName(res.data.name);
+      const [bankRes, walletRes] = await Promise.allSettled([
+        api.get('/organizer/bank-details'),
+        api.get('/organizer/wallet'),
+      ]);
+
+      if (bankRes.status === 'fulfilled' && bankRes.value.data?.accountNumber) {
+        const d = bankRes.value.data;
+        setSavedDetails(d);
+        setBankName(d.bankName || "");
+        setAccountNumber(d.accountNumber || "");
+        if (d.bankCode) setBankCode(d.bankCode);
+        if (d.name) setAccountName(d.name);
+      }
+
+      if (walletRes.status === 'fulfilled' && walletRes.value.data) {
+        setWalletBalance(walletRes.value.data.availableBalance ?? 0);
       }
     } catch (err) {
       // Ignored
@@ -62,6 +72,13 @@ export default function PayoutsPage() {
   };
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem("otix_user");
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (typeof u.walletBalance === "number") setWalletBalance(u.walletBalance);
+      }
+    } catch {}
     fetchBankDetails();
   }, []);
 
@@ -141,13 +158,21 @@ export default function PayoutsPage() {
           <h1 className="mt-1 text-xl font-bold text-[#fafafa] tracking-tight">Payout & Bank Account</h1>
           <p className="text-xs font-medium text-[#9ca3af] mt-0.5">Configure the settlement account where all ticket and voting proceeds will be sent.</p>
         </div>
-        <Link
-          href="/organizer/wallet"
-          className="inline-flex items-center gap-2 rounded-full border border-[#262626] bg-[#171717] hover:border-[#374151] hover:bg-[#202020] px-4 py-2 text-xs font-semibold text-[#fafafa] no-underline transition shrink-0"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Go to Wallet
-        </Link>
+        <div className="flex items-center gap-3">
+          {walletBalance !== null && (
+            <div className="hidden sm:flex flex-col items-end px-3.5 py-1.5 bg-[#171717] rounded-xl border border-[#262626]">
+              <span className="text-[9px] text-[#9ca3af] font-bold uppercase tracking-wider">Wallet Balance</span>
+              <span className="text-xs font-bold text-emerald-400">₦{walletBalance.toLocaleString()}</span>
+            </div>
+          )}
+          <Link
+            href="/organizer/wallet"
+            className="inline-flex items-center gap-2 rounded-full border border-[#262626] bg-[#171717] hover:border-[#374151] hover:bg-[#202020] px-4 py-2 text-xs font-semibold text-[#fafafa] no-underline transition shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Withdraw in Wallet
+          </Link>
+        </div>
       </div>
 
       {message && (

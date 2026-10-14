@@ -40,6 +40,17 @@ export default function OrganizerDashboard() {
       try {
         const res = await api.get("/organizer/dashboard");
         setData(res.data);
+        if (res.data?.stats?.walletBalance !== undefined) {
+          try {
+            const stored = localStorage.getItem("otix_user");
+            if (stored) {
+              const u = JSON.parse(stored);
+              u.walletBalance = res.data.stats.walletBalance;
+              localStorage.setItem("otix_user", JSON.stringify(u));
+              setUser((prev: any) => ({ ...prev, walletBalance: res.data.stats.walletBalance }));
+            }
+          } catch {}
+        }
       } catch (err) {
         console.error("Failed to fetch organizer dashboard data", err);
       } finally {
@@ -123,7 +134,11 @@ export default function OrganizerDashboard() {
         {[
           { 
             label: "Wallet Balance", 
-            value: formatNaira(typeof data.stats.walletBalance === "number" ? data.stats.walletBalance : Math.max(0, data.stats.revenue - (data.stats.withdrawnAmount || 0))), 
+            value: formatNaira(
+              (typeof data.stats.walletBalance === "number" && data.stats.walletBalance > 0)
+                ? data.stats.walletBalance
+                : (user?.walletBalance || (typeof data.stats.walletBalance === "number" ? data.stats.walletBalance : Math.max(0, data.stats.revenue - (data.stats.withdrawnAmount || 0))))
+            ), 
             sub: "Available for withdrawal", 
             badgeClass: "bg-emerald-950/40 text-emerald-400 border border-emerald-800/40",
             href: "/organizer/wallet",

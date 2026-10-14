@@ -30,6 +30,8 @@ export default function WalletPage() {
   const [bankModalMessage, setBankModalMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [availableBalance, setAvailableBalance] = useState(0);
   const [pendingBalance, setPendingBalance] = useState(0);
@@ -38,17 +40,52 @@ export default function WalletPage() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"sales" | "payouts">("sales");
 
+  // Populate immediate baseline from session storage while API loads
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("otix_user");
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (typeof u.walletBalance === "number" && u.walletBalance > 0) {
+          setAvailableBalance(u.walletBalance);
+          setTotalEarnings(u.walletBalance);
+        }
+        if (u.bankName && !bank) setBank(u.bankName);
+        if (u.accountNumber && !accountNumber) setAccountNumber(u.accountNumber);
+        if (u.name && !accountName) setAccountName(u.name.toUpperCase());
+      }
+    } catch {}
+  }, []);
+
   const fetchWalletData = async () => {
     try {
-      setLoading(true);
+      setRefreshing(true);
+      setFetchError("");
       const res = await api.get('/organizer/wallet');
       if (res.data) {
-        setTotalEarnings(res.data.totalRevenue || 0);
-        setAvailableBalance(res.data.availableBalance || 0);
-        setPendingBalance(res.data.pendingWithdrawals || 0);
-        setTotalPayouts(res.data.withdrawnAmount || 0);
+        const rev = Number(res.data.totalRevenue) || 0;
+        const bal = Number(res.data.availableBalance) || 0;
+        const pend = Number(res.data.pendingWithdrawals) || 0;
+        const withdr = Number(res.data.withdrawnAmount) || 0;
+
+        setTotalEarnings(rev);
+        setAvailableBalance(bal);
+        setPendingBalance(pend);
+        setTotalPayouts(withdr);
         setTransactions(res.data.transactions || []);
         setPayouts(res.data.payouts || []);
+
+        // Keep local storage user object up to date
+        try {
+          const stored = localStorage.getItem("otix_user");
+          if (stored) {
+            const u = JSON.parse(stored);
+            u.walletBalance = bal;
+            if (res.data.bankDetails?.bankName) u.bankName = res.data.bankDetails.bankName;
+            if (res.data.bankDetails?.accountNumber) u.accountNumber = res.data.bankDetails.accountNumber;
+            localStorage.setItem("otix_user", JSON.stringify(u));
+          }
+        } catch {}
 
         if (res.data.bankDetails) {
           if (res.data.bankDetails.bankName && !bank) setBank(res.data.bankDetails.bankName);
@@ -65,10 +102,12 @@ export default function WalletPage() {
           } catch {}
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch wallet data', err);
+      setFetchError(err.response?.data?.message || 'Unable to sync live wallet data. Click retry to reconnect.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -188,40 +227,87 @@ export default function WalletPage() {
           <h1 className="text-xl font-bold text-[#fafafa] tracking-tight">Earnings & Withdrawals</h1>
           <p className="text-xs font-medium text-[#9ca3af] mt-0.5">Real-time balances calculated solely from successful ticket transactions.</p>
         </div>
-        <button
-          onClick={() => setShowPayoutModal(true)}
-          type="button"
-          className="flex h-10 items-center gap-2 rounded-full bg-[#fafafa] px-5 text-xs font-semibold text-[#0a0a0a] transition hover:bg-white shadow-sm shrink-0 active:scale-95 cursor-pointer"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 19V5M5 12l7-7 7 7" />
-          </svg>
-          Withdraw Funds
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={fetchWalletData}
+            disabled={refreshing}
+            type="button"
+            className="flex h-10 items-center gap-2 rounded-full border border-[#262626] bg-[#171717] px-4 text-xs font-medium text-[#fafafa] transition hover:bg-[#222] hover:border-[#374151] shrink-0 active:scale-95 cursor-pointer disabled:opacity-50"
+            title="Refresh Live Balance"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={refreshing ? "animate-spin" : ""}
+            >
+              <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+            </svg>
+            <span className="hidden sm:inline">{refreshing ? "Syncing..." : "Refresh"}</span>
+          </button>
+          <button
+            onClick={() => setShowPayoutModal(true)}
+            type="button"
+            className="flex h-10 items-center gap-2 rounded-full bg-[#fafafa] px-5 text-xs font-semibold text-[#0a0a0a] transition hover:bg-white shadow-sm shrink-0 active:scale-95 cursor-pointer"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+            Withdraw Funds
+          </button>
+        </div>
       </div>
 
-      {/* BALANCE CARDS */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Total Ticket Sales", value: totalEarnings, badgeClass: "bg-[#171717] border border-[#262626] text-[#fafafa]", sub: "Only successful orders", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
-          { label: "Available Balance", value: availableBalance, badgeClass: "bg-emerald-950/40 border border-emerald-800/40 text-emerald-400", sub: "Ready for withdrawal", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
-          { label: "Pending Approvals", value: pendingBalance, badgeClass: "bg-amber-950/40 border border-amber-800/40 text-amber-400", sub: "Under admin review", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-          { label: "Total Withdrawn", value: totalPayouts, badgeClass: "bg-purple-950/40 border border-purple-800/40 text-purple-400", sub: "Approved & released", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
-        ].map((card) => (
-          <div key={card.label} className="rounded-2xl border border-[#262626] bg-[#121212] p-5 transition hover:border-[#374151]">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">{card.label}</p>
-              <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${card.badgeClass}`}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d={card.icon} />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-[#fafafa] tracking-tight">{formatNaira(card.value)}</p>
-            <p className="mt-1 text-[11px] font-medium text-[#9ca3af]">{card.sub}</p>
+      {/* ERROR BANNER */}
+      {fetchError && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-800/40 bg-rose-950/30 p-4 text-xs text-rose-300">
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>{fetchError}</span>
           </div>
-        ))}
-      </div>
+          <button
+            onClick={fetchWalletData}
+            type="button"
+            className="rounded-full bg-rose-900/60 hover:bg-rose-900 px-3.5 py-1.5 font-semibold text-rose-200 transition text-[11px] cursor-pointer"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
+
+      {/* BALANCE CARDS */}
+      {loading && availableBalance === 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-2xl border border-[#262626] bg-[#121212] p-5 h-28" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Total Ticket Sales", value: totalEarnings, badgeClass: "bg-[#171717] border border-[#262626] text-[#fafafa]", sub: "Only successful orders", icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Available Balance", value: availableBalance, badgeClass: "bg-emerald-950/40 border border-emerald-800/40 text-emerald-400", sub: "Ready for withdrawal", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Pending Approvals", value: pendingBalance, badgeClass: "bg-amber-950/40 border border-amber-800/40 text-amber-400", sub: "Under admin review", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Total Withdrawn", value: totalPayouts, badgeClass: "bg-purple-950/40 border border-purple-800/40 text-purple-400", sub: "Approved & released", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" },
+          ].map((card) => (
+            <div key={card.label} className="rounded-2xl border border-[#262626] bg-[#121212] p-5 transition hover:border-[#374151]">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#9ca3af]">{card.label}</p>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${card.badgeClass}`}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d={card.icon} />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-[#fafafa] tracking-tight">{formatNaira(card.value)}</p>
+              <p className="mt-1 text-[11px] font-medium text-[#9ca3af]">{card.sub}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* NOTICE BANNER */}
       <div className="flex items-start gap-3 rounded-2xl border border-[#262626] bg-[#171717] px-5 py-3.5">
