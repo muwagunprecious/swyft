@@ -13,32 +13,21 @@ function Toast({ message, type, onClose }: { message: string; type: ToastType; o
   }, [onClose]);
 
   return (
-    <div style={{
-      position: "fixed", top: "24px", right: "24px", zIndex: 9999,
-      display: "flex", alignItems: "center", gap: "10px",
-      background: type === "success" ? "#f0fdf4" : "#fef2f2",
-      border: `1px solid ${type === "success" ? "#bbf7d0" : "#fecaca"}`,
-      color: type === "success" ? "#15803d" : "#dc2626",
-      padding: "14px 18px", borderRadius: "14px",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.12)", fontWeight: 700, fontSize: "0.88rem",
-      animation: "slideIn 0.25s ease",
-      maxWidth: "360px",
-    }}>
-      <span style={{ fontSize: "1.1rem" }}>{type === "success" ? "✅" : "❌"}</span>
-      {message}
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }`}</style>
+    <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-5 py-3.5 shadow-2xl text-xs font-semibold backdrop-blur-md transition-all ${
+      type === "success"
+        ? "border-emerald-800/60 bg-[#121212]/95 text-emerald-400 shadow-emerald-950/40"
+        : "border-rose-800/60 bg-[#121212]/95 text-rose-400 shadow-rose-950/40"
+    }`}>
+      <span>{type === "success" ? "✓" : "✕"}</span>
+      <span>{message}</span>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: "#fff", borderRadius: "20px", border: "1px solid #e5e7eb",
-      padding: "28px 32px", boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-      marginBottom: "20px",
-    }}>
-      <h2 style={{ fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#9333ea", marginBottom: "20px" }}>{title}</h2>
+    <div className="rounded-2xl border border-[#262626] bg-[#121212] p-6 shadow-sm space-y-5">
+      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">{title}</h2>
       {children}
     </div>
   );
@@ -46,19 +35,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: "18px" }}>
-      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#374151", marginBottom: "7px" }}>{label}</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-[#fafafa]">{label}</label>
       {children}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "11px 14px", borderRadius: "12px",
-  border: "1.5px solid #e5e7eb", background: "#f9fafb", fontSize: "0.9rem",
-  color: "#111827", outline: "none", boxSizing: "border-box",
-  fontFamily: "inherit", transition: "border-color 0.15s",
-};
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -164,18 +146,19 @@ export default function SettingsPage() {
   };
 
   const eyeIcon = (show: boolean, toggle: () => void) => (
-    <button type="button" onClick={toggle} style={{
-      position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
-      background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: "4px",
-    }}>
+    <button
+      type="button"
+      onClick={toggle}
+      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#fafafa] transition"
+    >
       {show ? (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
           <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
           <line x1="1" y1="1" x2="23" y2="23"/>
         </svg>
       ) : (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
         </svg>
       )}
@@ -184,175 +167,165 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 20px" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: "36px", height: "36px", border: "3px solid #e5e7eb", borderTopColor: "#9333ea", borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 16px" }} />
-          <p style={{ color: "#6b7280", fontWeight: 600, fontSize: "0.875rem" }}>Loading your settings…</p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#262626] border-t-[#fafafa]" />
       </div>
     );
   }
 
   return (
-    <div style={{ background: "#f8f7fc", minHeight: "100%", padding: "32px 24px" }}>
+    <div className="space-y-6 pt-2 max-w-2xl">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div style={{ maxWidth: "640px", margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ marginBottom: "28px" }}>
-          <p style={{ fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "#9333ea", marginBottom: "6px" }}>Account</p>
-          <h1 style={{ fontSize: "1.6rem", fontWeight: 900, color: "#1a0a2e", letterSpacing: "-0.03em" }}>Settings</h1>
-          <p style={{ fontSize: "0.875rem", color: "#6b7280", marginTop: "4px" }}>Manage your profile and account preferences.</p>
+      {/* Header */}
+      <div>
+        <span className="inline-block rounded-full border border-[#262626] bg-[#171717] px-3 py-1 text-[11px] font-medium tracking-wide text-[#9ca3af] uppercase">
+          Account
+        </span>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#fafafa]">Settings</h1>
+        <p className="mt-1 text-xs text-[#9ca3af]">
+          Manage your organizer profile and account security settings.
+        </p>
+      </div>
+
+      {/* ── PROFILE ── */}
+      <Section title="Profile Information">
+        {/* Avatar */}
+        <div className="flex items-center gap-4 pb-4 border-b border-[#262626]">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#262626] bg-[#171717] text-base font-bold text-[#fafafa]">
+            {name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#fafafa]">{name || "Your Name"}</p>
+            <p className="text-xs text-[#9ca3af]">{email}</p>
+          </div>
         </div>
 
-        {/* ── PROFILE ── */}
-        <Section title="Profile Information">
-          {/* Avatar */}
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "24px", paddingBottom: "24px", borderBottom: "1px solid #f3f4f6" }}>
-            <div style={{
-              width: "60px", height: "60px", borderRadius: "50%", flexShrink: 0,
-              background: "linear-gradient(135deg, #f3e8ff, #e9d5ff)",
-              border: "2px solid #d8b4fe",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.4rem", fontWeight: 900, color: "#9333ea",
-            }}>
-              {name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
-            </div>
-            <div>
-              <p style={{ fontWeight: 800, color: "#111827", fontSize: "0.95rem" }}>{name || "Your Name"}</p>
-              <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "2px" }}>{email}</p>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <div style={{ gridColumn: "span 2" }}>
-              <Field label="Full Name">
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" style={inputStyle} />
-              </Field>
-            </div>
-            <div style={{ gridColumn: "span 2" }}>
-              <Field label="Email Address">
-                <input value={email} disabled style={{ ...inputStyle, background: "#f3f4f6", color: "#9ca3af", cursor: "not-allowed" }} />
-                <p style={{ fontSize: "0.73rem", color: "#9ca3af", marginTop: "5px", fontWeight: 500 }}>Email cannot be changed here.</p>
-              </Field>
-            </div>
-            <Field label="Phone Number">
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="080xxxxxxxx" style={inputStyle} />
-            </Field>
-            <Field label="University / Campus">
-              <div style={{ position: "relative" }}>
-                <select value={university} onChange={e => setUniversity(e.target.value)} style={{ ...inputStyle, appearance: "none", paddingRight: "36px" }}>
-                  <option value="">Select university…</option>
-                  {universities.filter(u => u !== "Others").map(u => <option key={u} value={u}>{u}</option>)}
-                  <option value="Others">Others</option>
-                </select>
-                <div style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#9ca3af" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" /></svg>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <Field label="Full Name">
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your full name"
+                className="h-10 w-full rounded-full border border-[#262626] bg-[#171717] px-4 text-xs font-medium text-[#fafafa] placeholder-[#737373] outline-none transition focus:border-[#374151]"
+              />
             </Field>
           </div>
-
-          <button
-            onClick={handleSaveProfile}
-            disabled={savingProfile}
-            style={{
-              marginTop: "8px", width: "100%", padding: "13px", borderRadius: "12px", border: "none",
-              background: savingProfile ? "#e5e7eb" : "linear-gradient(135deg, #9333ea, #7e22ce)",
-              color: savingProfile ? "#9ca3af" : "#fff",
-              fontWeight: 800, fontSize: "0.9rem", cursor: savingProfile ? "default" : "pointer",
-              boxShadow: savingProfile ? "none" : "0 4px 16px rgba(147,51,234,0.35)",
-              transition: "all 0.2s",
-            }}
-          >
-            {savingProfile ? "Saving…" : "Save Profile"}
-          </button>
-        </Section>
-
-        {/* ── PASSWORD ── */}
-        <Section title="Change Password">
-          <Field label="Current Password">
-            <div style={{ position: "relative" }}>
+          <div className="sm:col-span-2">
+            <Field label="Email Address">
               <input
-                type={showCurrent ? "text" : "password"}
-                value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ ...inputStyle, paddingRight: "40px" }}
+                value={email}
+                disabled
+                className="h-10 w-full rounded-full border border-[#202020] bg-[#141414] px-4 text-xs font-medium text-[#737373] cursor-not-allowed outline-none"
               />
-              {eyeIcon(showCurrent, () => setShowCurrent(v => !v))}
-            </div>
-          </Field>
-          <Field label="New Password">
-            <div style={{ position: "relative" }}>
-              <input
-                type={showNew ? "text" : "password"}
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                style={{ ...inputStyle, paddingRight: "40px" }}
-              />
-              {eyeIcon(showNew, () => setShowNew(v => !v))}
-            </div>
-          </Field>
-          <Field label="Confirm New Password">
+              <p className="mt-1 text-[11px] text-[#737373]">Email cannot be changed directly.</p>
+            </Field>
+          </div>
+          <Field label="Phone Number">
             <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Repeat new password"
-              style={{
-                ...inputStyle,
-                borderColor: confirmPassword && confirmPassword !== newPassword ? "#fca5a5" : inputStyle.borderColor,
-              }}
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="080xxxxxxxx"
+              className="h-10 w-full rounded-full border border-[#262626] bg-[#171717] px-4 text-xs font-medium text-[#fafafa] placeholder-[#737373] outline-none transition focus:border-[#374151]"
             />
-            {confirmPassword && confirmPassword !== newPassword && (
-              <p style={{ fontSize: "0.73rem", color: "#ef4444", marginTop: "5px", fontWeight: 600 }}>Passwords do not match</p>
-            )}
           </Field>
-
-          <button
-            onClick={handleChangePassword}
-            disabled={savingPassword}
-            style={{
-              width: "100%", padding: "13px", borderRadius: "12px", border: "none",
-              background: savingPassword ? "#e5e7eb" : "linear-gradient(135deg, #1e0a3c, #3b0764)",
-              color: savingPassword ? "#9ca3af" : "#fff",
-              fontWeight: 800, fontSize: "0.9rem", cursor: savingPassword ? "default" : "pointer",
-              boxShadow: savingPassword ? "none" : "0 4px 16px rgba(30,10,60,0.3)",
-              transition: "all 0.2s",
-            }}
-          >
-            {savingPassword ? "Changing…" : "Change Password"}
-          </button>
-        </Section>
-
-        {/* ── DANGER ZONE ── */}
-        <Section title="Danger Zone">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <p style={{ fontWeight: 700, color: "#111827", fontSize: "0.9rem" }}>Sign out of your account</p>
-              <p style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "2px" }}>You'll need your credentials to sign back in.</p>
+          <Field label="University / Campus">
+            <div className="relative">
+              <select
+                value={university}
+                onChange={e => setUniversity(e.target.value)}
+                className="h-10 w-full appearance-none rounded-full border border-[#262626] bg-[#171717] px-4 pr-10 text-xs font-medium text-[#fafafa] outline-none transition focus:border-[#374151]"
+              >
+                <option value="">Select university…</option>
+                {universities.filter(u => u !== "Others").map(u => <option key={u} value={u} className="bg-[#171717] text-[#fafafa]">{u}</option>)}
+                <option value="Others" className="bg-[#171717] text-[#fafafa]">Others</option>
+              </select>
+              <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#737373]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                localStorage.removeItem("otix_token");
-                localStorage.removeItem("otix_user");
-                window.location.href = "/login";
-              }}
-              style={{
-                padding: "10px 22px", borderRadius: "10px", border: "1.5px solid #fecaca",
-                background: "#fff5f5", color: "#dc2626", fontWeight: 700,
-                fontSize: "0.85rem", cursor: "pointer", transition: "all 0.15s",
-                flexShrink: 0,
-              }}
-            >
-              Sign Out
-            </button>
+          </Field>
+        </div>
+
+        <button
+          onClick={handleSaveProfile}
+          disabled={savingProfile}
+          className="mt-2 flex h-10 w-full items-center justify-center rounded-full bg-[#fafafa] text-xs font-semibold text-[#0a0a0a] transition hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {savingProfile ? "Saving…" : "Save Profile"}
+        </button>
+      </Section>
+
+      {/* ── PASSWORD ── */}
+      <Section title="Change Password">
+        <Field label="Current Password">
+          <div className="relative">
+            <input
+              type={showCurrent ? "text" : "password"}
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              placeholder="••••••••"
+              className="h-10 w-full rounded-full border border-[#262626] bg-[#171717] px-4 pr-10 text-xs font-medium text-[#fafafa] placeholder-[#737373] outline-none transition focus:border-[#374151]"
+            />
+            {eyeIcon(showCurrent, () => setShowCurrent(v => !v))}
           </div>
-        </Section>
-      </div>
+        </Field>
+        <Field label="New Password">
+          <div className="relative">
+            <input
+              type={showNew ? "text" : "password"}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              className="h-10 w-full rounded-full border border-[#262626] bg-[#171717] px-4 pr-10 text-xs font-medium text-[#fafafa] placeholder-[#737373] outline-none transition focus:border-[#374151]"
+            />
+            {eyeIcon(showNew, () => setShowNew(v => !v))}
+          </div>
+        </Field>
+        <Field label="Confirm New Password">
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            placeholder="Repeat new password"
+            className={`h-10 w-full rounded-full border bg-[#171717] px-4 text-xs font-medium text-[#fafafa] placeholder-[#737373] outline-none transition ${
+              confirmPassword && confirmPassword !== newPassword ? "border-rose-500" : "border-[#262626] focus:border-[#374151]"
+            }`}
+          />
+          {confirmPassword && confirmPassword !== newPassword && (
+            <p className="mt-1 text-[11px] font-medium text-rose-400">Passwords do not match</p>
+          )}
+        </Field>
+
+        <button
+          onClick={handleChangePassword}
+          disabled={savingPassword}
+          className="flex h-10 w-full items-center justify-center rounded-full border border-[#262626] bg-[#171717] text-xs font-semibold text-[#fafafa] transition hover:bg-[#202020] hover:border-[#374151] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {savingPassword ? "Updating…" : "Change Password"}
+        </button>
+      </Section>
+
+      {/* ── DANGER ZONE ── */}
+      <Section title="Account Actions">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold text-[#fafafa]">Sign out of your account</p>
+            <p className="mt-0.5 text-[11px] text-[#9ca3af]">You will need your credentials to sign back into this workspace.</p>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem("otix_token");
+              localStorage.removeItem("otix_user");
+              window.location.href = "/login";
+            }}
+            className="rounded-full border border-rose-800/40 bg-rose-950/30 px-5 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-900/40 shrink-0"
+          >
+            Sign Out
+          </button>
+        </div>
+      </Section>
     </div>
   );
 }

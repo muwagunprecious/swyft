@@ -13,75 +13,79 @@ export default function OrdersPage() {
   const totalRevenue = orders.filter(o => o.status === "paid").reduce((s, o) => s + o.amount, 0);
 
   return (
-    <div className="min-h-full bg-[#F2F3F5]">
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-[#9333ea]">Orders</p>
-            <h1 className="text-2xl font-black text-[#1a202c]">All Orders</h1>
-            <p className="mt-1 text-[13px] font-semibold text-gray-400">Every ticket purchase across all your events.</p>
+    <div className="space-y-6 pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="inline-block rounded-full border border-[#262626] bg-[#171717] px-3 py-1 text-[11px] font-medium tracking-wide text-[#9ca3af] uppercase">
+            Orders
+          </span>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#fafafa]">All Orders</h1>
+          <p className="mt-1 text-xs text-[#9ca3af]">Every ticket purchase across all your events.</p>
+        </div>
+        <button className="flex shrink-0 items-center gap-2 rounded-full border border-[#262626] bg-[#171717] px-4 py-2 text-xs font-semibold text-[#fafafa] transition hover:bg-[#202020] hover:border-[#374151]">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Export CSV
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Total Orders", value: orders.length.toString(), color: "text-[#fafafa]" },
+          { label: "Paid Orders", value: orders.filter(o => o.status === "paid").length.toString(), color: "text-[#fafafa]" },
+          { label: "Revenue", value: `₦${totalRevenue.toLocaleString()}`, color: "text-emerald-400" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl border border-[#262626] bg-[#121212] p-5 shadow-sm">
+            <p className="text-xs font-medium text-[#9ca3af]">{s.label}</p>
+            <p className={`mt-2 text-2xl font-bold tracking-tight ${s.color}`}>{s.value}</p>
           </div>
-          <button className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2.5 text-[13px] font-bold text-gray-600 transition hover:bg-gray-50">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export CSV
-          </button>
-        </div>
+        ))}
+      </div>
 
-        {/* Stats */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          {[
-            { label: "Total Orders", value: orders.length },
-            { label: "Paid Orders", value: orders.filter(o => o.status === "paid").length },
-            { label: "Revenue", value: `₦${totalRevenue.toLocaleString()}` },
-          ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">{s.label}</p>
-              <p className="mt-3 text-2xl font-black text-[#1a202c]">{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Table */}
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  {["Order ID", "Buyer", "Event", "Ticket", "Qty", "Amount", "Date", "Status"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {orders.map((o) => (
-                  <tr key={o.id} className="transition hover:bg-purple-50/30">
-                    <td className="px-4 py-3.5 text-[12px] font-black text-[#9333ea] whitespace-nowrap">{o.id}</td>
-                    <td className="px-4 py-3.5">
-                      <p className="text-[13px] font-bold text-[#1a202c] whitespace-nowrap">{o.buyer}</p>
-                      <p className="text-[11px] font-semibold text-gray-400">{o.email}</p>
-                    </td>
-                    <td className="px-4 py-3.5 max-w-[160px]">
-                      <p className="truncate text-[12px] font-semibold text-gray-700">{o.event}</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-bold text-[#9333ea] whitespace-nowrap">{o.ticket}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-[13px] font-bold text-gray-700">{o.qty}</td>
-                    <td className="px-4 py-3.5 text-[13px] font-black text-[#12B76A] whitespace-nowrap">₦{o.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3.5 text-[12px] font-semibold text-gray-500 whitespace-nowrap">{o.date}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold capitalize ${o.status === "paid" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${o.status === "paid" ? "bg-green-500" : "bg-red-400"}`} />
-                        {o.status}
-                      </span>
-                    </td>
-                  </tr>
+      {/* Table */}
+      <div className="rounded-2xl border border-[#262626] bg-[#121212] shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-[#262626] bg-[#141414]">
+                {["Order ID", "Buyer", "Event", "Ticket", "Qty", "Amount", "Date", "Status"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-[10px] font-medium uppercase tracking-wider text-[#9ca3af] whitespace-nowrap">{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#262626]">
+              {orders.map((o) => (
+                <tr key={o.id} className="transition hover:bg-[#171717]">
+                  <td className="px-4 py-3.5 text-xs font-semibold text-[#fafafa] whitespace-nowrap">{o.id}</td>
+                  <td className="px-4 py-3.5">
+                    <p className="text-xs font-semibold text-[#fafafa] whitespace-nowrap">{o.buyer}</p>
+                    <p className="text-[11px] text-[#9ca3af]">{o.email}</p>
+                  </td>
+                  <td className="px-4 py-3.5 max-w-[200px]">
+                    <p className="truncate text-xs text-[#fafafa]">{o.event}</p>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="inline-flex rounded-full border border-[#262626] bg-[#171717] px-2.5 py-0.5 text-[11px] font-medium text-[#fafafa] whitespace-nowrap">{o.ticket}</span>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs font-medium text-[#fafafa]">{o.qty}</td>
+                  <td className="px-4 py-3.5 text-xs font-semibold text-emerald-400 whitespace-nowrap">₦{o.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3.5 text-xs text-[#9ca3af] whitespace-nowrap">{o.date}</td>
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium border capitalize ${
+                      o.status === "paid"
+                        ? "border-emerald-800/40 bg-emerald-950/40 text-emerald-400"
+                        : "border-rose-800/40 bg-rose-950/40 text-rose-400"
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${o.status === "paid" ? "bg-emerald-400" : "bg-rose-400"}`} />
+                      {o.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

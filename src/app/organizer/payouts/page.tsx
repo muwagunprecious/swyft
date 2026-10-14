@@ -128,50 +128,50 @@ export default function PayoutsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 md:px-8 space-y-6">
+    <div className="space-y-6 pt-2">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-5">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
-            <Link href="/organizer" className="hover:text-[#d1410c] transition no-underline">Dashboard</Link>
+          <div className="flex items-center gap-2 text-[11px] font-medium text-[#9ca3af] uppercase tracking-wider">
+            <Link href="/organizer" className="hover:text-[#fafafa] transition no-underline">Dashboard</Link>
             <span>/</span>
-            <span className="text-gray-600">Settlement Settings</span>
+            <span className="text-[#fafafa]">Settlement Settings</span>
           </div>
-          <h1 className="mt-1 text-2xl font-black text-gray-900 tracking-tight">Payout & Bank Account</h1>
-          <p className="text-sm font-medium text-gray-500 mt-1">Configure the settlement account where all ticket and voting proceeds will be sent.</p>
+          <h1 className="mt-1 text-xl font-bold text-[#fafafa] tracking-tight">Payout & Bank Account</h1>
+          <p className="text-xs font-medium text-[#9ca3af] mt-0.5">Configure the settlement account where all ticket and voting proceeds will be sent.</p>
         </div>
         <Link
           href="/organizer/wallet"
-          className="inline-flex items-center gap-2 rounded-xl bg-gray-100 hover:bg-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 no-underline transition shrink-0"
+          className="inline-flex items-center gap-2 rounded-full border border-[#262626] bg-[#171717] hover:border-[#374151] hover:bg-[#202020] px-4 py-2 text-xs font-semibold text-[#fafafa] no-underline transition shrink-0"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Go to Wallet
         </Link>
       </div>
 
       {message && (
-        <div className={`p-4 rounded-xl text-xs font-bold flex items-center justify-between ${
+        <div className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between border ${
           message.type === "success" 
-            ? "bg-emerald-50 text-emerald-800 border border-emerald-200" 
-            : "bg-red-50 text-red-800 border border-red-200"
+            ? "border-emerald-800/40 bg-emerald-950/40 text-emerald-400" 
+            : "border-rose-800/40 bg-rose-950/40 text-rose-400"
         }`}>
           <span>{message.text}</span>
-          <button onClick={() => setMessage(null)} className="text-sm font-black opacity-60 hover:opacity-100">✕</button>
+          <button onClick={() => setMessage(null)} className="text-sm font-bold opacity-60 hover:opacity-100 cursor-pointer">✕</button>
         </div>
       )}
 
-      <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm max-w-2xl">
+      <div className="bg-[#121212] p-6 md:p-8 rounded-2xl border border-[#262626] max-w-2xl">
         {savedDetails && !isEditing ? (
           <div className="space-y-6">
-            <div className="flex items-center justify-between bg-emerald-50/70 border border-emerald-200 p-4 rounded-xl">
+            <div className="flex items-center justify-between border border-emerald-800/40 bg-emerald-950/40 p-4 rounded-xl">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-lg">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-900/60 text-emerald-400 text-sm font-bold">
                   ✓
                 </span>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900">Settlement Account Active</h3>
-                  <p className="text-xs font-medium text-emerald-700 mt-0.5">Approved withdrawal payouts will be routed to this bank account.</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Settlement Account Active</h3>
+                  <p className="text-xs font-medium text-emerald-300/80 mt-0.5">Approved withdrawal payouts will be routed to this bank account.</p>
                 </div>
               </div>
               <button
@@ -180,30 +180,30 @@ export default function PayoutsPage() {
                   setMessage(null);
                 }}
                 type="button"
-                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50 transition shadow-sm"
+                className="rounded-full border border-[#262626] bg-[#171717] px-3.5 py-1.5 text-xs font-semibold text-[#fafafa] hover:border-[#374151] hover:bg-[#202020] transition cursor-pointer"
               >
                 Edit Details
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 bg-[#faf9fc] rounded-xl border border-gray-150">
-                <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Settlement Bank</p>
-                <p className="text-sm font-bold text-gray-900 mt-1">{savedDetails.bankName || "Not specified"}</p>
+              <div className="p-4 bg-[#171717] rounded-xl border border-[#262626]">
+                <p className="text-[10px] font-bold uppercase text-[#9ca3af] tracking-wider">Settlement Bank</p>
+                <p className="text-sm font-semibold text-[#fafafa] mt-1">{savedDetails.bankName || "Not specified"}</p>
               </div>
-              <div className="p-4 bg-[#faf9fc] rounded-xl border border-gray-150">
-                <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Account Number</p>
-                <p className="text-sm font-bold text-gray-900 mt-1 tracking-wider font-mono">{savedDetails.accountNumber}</p>
+              <div className="p-4 bg-[#171717] rounded-xl border border-[#262626]">
+                <p className="text-[10px] font-bold uppercase text-[#9ca3af] tracking-wider">Account Number</p>
+                <p className="text-sm font-semibold text-[#fafafa] mt-1 tracking-wider font-mono">{savedDetails.accountNumber}</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-gray-400 font-medium">
+            <div className="flex items-center justify-between pt-2 border-t border-[#262626]">
+              <p className="text-xs text-[#9ca3af] font-medium">
                 Need to transfer funds? Request a withdrawal anytime from your wallet.
               </p>
               <Link
                 href="/organizer/wallet"
-                className="text-xs font-bold text-[#d1410c] hover:underline"
+                className="text-xs font-bold text-[#fafafa] hover:underline"
               >
                 Open Wallet &rarr;
               </Link>
@@ -212,7 +212,7 @@ export default function PayoutsPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-base font-black text-gray-900">
+              <h3 className="text-base font-bold text-[#fafafa]">
                 {savedDetails ? "Update Settlement Account" : "Add Settlement Bank Account"}
               </h3>
               {savedDetails && (
@@ -222,7 +222,7 @@ export default function PayoutsPage() {
                     setIsEditing(false);
                     setMessage(null);
                   }}
-                  className="text-xs font-bold text-gray-500 hover:text-gray-800"
+                  className="text-xs font-semibold text-[#9ca3af] hover:text-[#fafafa] cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -230,22 +230,22 @@ export default function PayoutsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-2">Select Settlement Bank</label>
+              <label className="block text-xs font-bold text-[#fafafa] mb-2">Select Settlement Bank</label>
               <select
                 required
                 value={bankCode}
                 onChange={(e) => handleBankChange(e.target.value)}
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20 outline-none text-sm font-semibold bg-white transition"
+                className="w-full h-11 px-4 rounded-full border border-[#262626] bg-[#171717] focus:border-[#fafafa] outline-none text-xs font-medium text-[#fafafa] transition"
               >
-                <option value="">-- Choose your bank --</option>
+                <option value="" className="bg-[#171717] text-[#fafafa]">-- Choose your bank --</option>
                 {NIGERIAN_BANKS.map((b) => (
-                  <option key={b.code} value={b.code}>{b.name}</option>
+                  <option key={b.code} value={b.code} className="bg-[#171717] text-[#fafafa]">{b.name}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-2">10-Digit Account Number</label>
+              <label className="block text-xs font-bold text-[#fafafa] mb-2">10-Digit Account Number</label>
               <input
                 required
                 type="text"
@@ -254,16 +254,16 @@ export default function PayoutsPage() {
                 placeholder="0123456789"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 focus:border-[#d1410c] focus:ring-2 focus:ring-[#d1410c]/20 outline-none text-sm font-bold tracking-widest text-gray-900 transition"
+                className="w-full h-11 px-4 rounded-full border border-[#262626] bg-[#171717] focus:border-[#fafafa] outline-none text-xs font-semibold tracking-widest text-[#fafafa] placeholder:text-[#6b7280] placeholder:tracking-normal transition"
               />
-              <p className="text-[11px] font-medium text-gray-400 mt-1.5">Enter the exact 10-digit NUBAN account number for payouts.</p>
+              <p className="text-[11px] font-medium text-[#9ca3af] mt-1.5">Enter the exact 10-digit NUBAN account number for payouts.</p>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="submit"
                 disabled={loading || !bankCode || accountNumber.replace(/\D/g, '').length !== 10}
-                className="h-12 flex-1 bg-[#d1410c] hover:bg-[#b03507] disabled:opacity-50 text-white text-xs font-black uppercase tracking-wider rounded-xl transition shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                className="h-11 flex-1 bg-[#fafafa] hover:bg-white disabled:opacity-40 text-[#0a0a0a] text-xs font-semibold rounded-full transition shadow-sm active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? "Saving Account..." : (savedDetails ? "Update Account Details" : "Save Payout Account")}
               </button>
@@ -271,7 +271,7 @@ export default function PayoutsPage() {
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="h-12 px-5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition"
+                  className="h-11 px-5 border border-[#262626] bg-[#171717] rounded-full text-xs font-semibold text-[#fafafa] hover:border-[#374151] hover:bg-[#202020] transition cursor-pointer"
                 >
                   Cancel
                 </button>

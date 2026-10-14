@@ -169,87 +169,40 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
   if (authorized === null || authorized === false) {
     return (
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(255, 255, 255, 0.96)", backdropFilter: "blur(16px)",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        zIndex: 10000, padding: "24px"
-      }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: "400px", textAlign: "center" }}>
-          
-          {/* Pulsing Glowing Ring with Swyft Logo */}
-          <div style={{ position: "relative", width: "100px", height: "100px", marginBottom: "32px" }}>
-            <div style={{
-              position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-              borderRadius: "50%", border: "4px solid rgba(240, 85, 55, 0.08)",
-              borderTopColor: "#f05537", borderRightColor: "#ff8f7a",
-              animation: "spin 1s linear infinite",
-              boxShadow: "0 0 15px rgba(240, 85, 55, 0.15)"
-            }} />
-            <div style={{
-              position: "absolute", top: "10px", left: "10px", right: "10px", bottom: "10px",
-              borderRadius: "50%", background: "radial-gradient(circle, rgba(240, 85, 55, 0.08) 0%, transparent 70%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              animation: "pulse 1.5s ease-in-out infinite"
-            }}>
-              {/* SVG Swyft Logo */}
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" className="text-[#f05537] drop-shadow-[0_0_8px_rgba(240, 85, 55, 0.3)]">
-                <path
-                  d="M4 4.7c0-.8.9-1.3 1.6-.9l13 7.5c.7.4.7 1.4 0 1.8l-13 7.5c-.7.4-1.6-.1-1.6-.9v-5.1l5.4-2.4L4 9.8V4.7Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </div>
+      <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-[#0a0a0a] text-[#fafafa] p-6">
+        <div className="relative flex flex-col items-center justify-center">
+          <div className="absolute h-24 w-24 animate-ping rounded-full bg-white/5" />
+          <div className="absolute h-16 w-16 animate-pulse rounded-full bg-white/10" />
+          <div className="relative flex h-14 w-14 items-center justify-center text-[#fafafa] animate-bounce">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 4.7c0-.8.9-1.3 1.6-.9l13 7.5c.7.4.7 1.4 0 1.8l-13 7.5c-.7.4-1.6-.1-1.6-.9v-5.1l5.4-2.4L4 9.8V4.7Z"
+                fill="currentColor"
+              />
+            </svg>
           </div>
-
-          <h2 style={{ fontSize: "1.5rem", fontWeight: 900, color: "#111827", marginBottom: "8px", letterSpacing: "-0.02em" }}>
-            Verifying Credentials
-          </h2>
-          <p style={{ fontSize: "0.8rem", color: "#f05537", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "24px" }}>
-            SWYFT CREATOR STUDIO
-          </p>
-
-          {/* Status Steps */}
-          <div style={{
-            background: "#F9FAFB", border: "1px solid #E5E7EB",
-            borderRadius: "16px", padding: "18px 24px", width: "100%", minHeight: "68px",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
-            backdropFilter: "blur(8px)"
-          }}>
-            <p style={{ fontSize: "0.9rem", color: "#1F2937", fontWeight: 700, margin: 0 }}>
-              ⚡ Securing dashboard session...
-            </p>
-          </div>
-          
-          <p style={{ fontSize: "0.72rem", color: "#6B7280", marginTop: "24px", fontWeight: 600 }}>
-            🔒 Secured by SWYFT Cryptographic Tokens
-          </p>
         </div>
 
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.85; }
-            50% { transform: scale(1.08); opacity: 1; }
-          }
-        `}} />
+        <h2 className="mt-8 text-sm font-light tracking-tight text-[#fafafa]">
+          Verifying Credentials
+        </h2>
+        <p className="mt-1 text-[10px] font-medium tracking-widest text-[#9ca3af] uppercase animate-pulse">
+          SWYFT CREATOR STUDIO
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F2F3F5]">
+    <div className="min-h-screen bg-[#0a0a0a] text-[#fafafa] font-sans selection:bg-[#fafafa] selection:text-[#0a0a0a]">
 
       {/* SIDEBAR */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-[320px] flex-col border-r border-white/10 bg-[#1e0a3c] lg:flex z-40">
+      <aside className="fixed left-0 top-0 hidden h-screen w-[280px] flex-col border-r border-[#262626] bg-[#0d0d0d] lg:flex z-40">
         <div className="flex flex-1 flex-col overflow-y-auto py-6">
           {/* Logo / Brand */}
-          <div className="mb-6 flex items-center gap-3 border-b border-white/10 px-6 pb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f05537]/20 text-[#f05537] shadow-sm">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <div className="mb-6 flex items-center gap-3 border-b border-[#262626] px-6 pb-6">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#171717] border border-[#262626] text-[#fafafa] shadow-sm">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M4 4.7c0-.8.9-1.3 1.6-.9l13 7.5c.7.4.7 1.4 0 1.8l-13 7.5c-.7.4-1.6-.1-1.6-.9v-5.1l5.4-2.4L4 9.8V4.7Z"
                   fill="currentColor"
@@ -257,8 +210,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               </svg>
             </div>
             <div>
-              <p className="text-[16px] font-black tracking-tight text-white mb-0.5">swyft</p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Creator Studio</p>
+              <p className="text-[15px] font-bold tracking-tight text-[#fafafa] uppercase leading-none">swyft</p>
+              <p className="text-[9px] font-medium uppercase tracking-widest text-[#9ca3af] mt-1">Creator Studio</p>
             </div>
           </div>
 
@@ -270,16 +223,13 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative flex items-center gap-3 rounded-xl px-4 py-3.5 text-[14px] font-bold no-underline transition-all ${
+                  className={`relative flex items-center gap-3 rounded-full px-4.5 py-3 text-[13px] font-medium no-underline transition-all ${
                     active
-                      ? "bg-[#f05537] text-white shadow-md shadow-[#f05537]/20"
-                      : "text-gray-300 hover:bg-white/5 hover:text-white"
+                      ? "bg-[#fafafa] text-[#0a0a0a] font-semibold shadow-sm"
+                      : "text-[#9ca3af] hover:bg-[#171717] hover:text-[#fafafa]"
                   }`}
                 >
-                  {active && (
-                    <span className="absolute left-0 top-[20%] bottom-[20%] w-[3.5px] rounded-r bg-white" />
-                  )}
-                  <span className={active ? "text-white" : "text-gray-400"}>{item.icon}</span>
+                  <span className={active ? "text-[#0a0a0a]" : "text-[#9ca3af]"}>{item.icon}</span>
                   {item.label}
                 </Link>
               );
@@ -290,14 +240,14 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           <div className="flex-1" />
 
           {/* Bottom Links */}
-          <div className="border-t border-white/10 px-4 pt-4">
+          <div className="border-t border-[#262626] px-4 pt-4 space-y-1">
             {bottomItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-bold text-gray-300 no-underline transition hover:bg-white/5 hover:text-white"
+                className="flex items-center gap-3 rounded-full px-4.5 py-2.5 text-[13px] font-medium text-[#9ca3af] no-underline transition hover:bg-[#171717] hover:text-[#fafafa]"
               >
-                <span className="text-gray-400">{item.icon}</span>
+                <span className="text-[#9ca3af]">{item.icon}</span>
                 {item.label}
               </Link>
             ))}
@@ -305,7 +255,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
             {/* Logout */}
             <button 
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[14px] font-bold text-red-400 transition hover:bg-red-500/10"
+              className="flex w-full items-center gap-3 rounded-full px-4.5 py-2.5 text-[13px] font-medium text-rose-400 transition hover:bg-rose-950/30 cursor-pointer"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -319,10 +269,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* TOP BAR */}
-      <div className="fixed left-0 right-0 top-0 z-30 flex h-[64px] items-center justify-between border-b border-gray-200 bg-white px-8 lg:left-[320px]">
+      <div className="fixed left-0 right-0 top-0 z-30 flex h-[64px] items-center justify-between border-b border-[#262626] bg-[#0a0a0a]/80 backdrop-blur-md px-6 md:px-8 lg:left-[280px]">
         {/* Mobile hamburger */}
         <button
-          className="mr-3 flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 lg:hidden"
+          className="mr-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#262626] bg-[#121212] text-[#9ca3af] hover:text-[#fafafa] lg:hidden cursor-pointer"
           onClick={() => setMobileOpen((v) => !v)}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -330,25 +280,25 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
           </svg>
         </button>
 
-        <h1 className="text-[16px] font-black text-[#1a202c]">{pageTitle}</h1>
+        <h1 className="text-base font-light tracking-tight text-[#fafafa]">{pageTitle}</h1>
 
         {/* User badge */}
-        <div className="hidden sm:flex items-center gap-2.5">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.8">
+        <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-[#262626] bg-[#121212]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-          <span className="truncate max-w-[150px] text-[14px] font-bold text-[#1a202c]">{user?.name || "SWYFT Admin"}</span>
+          <span className="truncate max-w-[150px] text-xs font-medium text-[#fafafa]">{user?.name || "Organizer"}</span>
         </div>
       </div>
 
       {/* Mobile Nav Drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 top-[64px] z-20 bg-black/30 lg:hidden" onClick={() => setMobileOpen(false)}>
-          <aside className="h-full w-[240px] bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 top-[64px] z-20 bg-black/80 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)}>
+          <aside className="h-full w-[260px] bg-[#0d0d0d] border-r border-[#262626] p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-3 text-[14px] font-bold no-underline ${pathname === item.href ? "bg-[#fff3f0] text-[#f05537]" : "text-gray-600"}`}>
+                className={`flex items-center gap-3 rounded-full px-4 py-3 text-[13px] font-medium no-underline mb-1 ${pathname === item.href ? "bg-[#fafafa] text-[#0a0a0a] font-semibold" : "text-[#9ca3af] hover:text-[#fafafa]"}`}>
                 {item.icon}{item.label}
               </Link>
             ))}
@@ -357,7 +307,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       )}
 
       {/* MAIN CONTENT */}
-      <main className="min-h-screen lg:pl-[320px]">
+      <main className="min-h-screen lg:pl-[280px] bg-[#0a0a0a]">
         <div className="min-h-[calc(100vh-64px)] pt-[64px] p-6 sm:p-8">
           {children}
         </div>
