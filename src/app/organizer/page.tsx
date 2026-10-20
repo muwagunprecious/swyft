@@ -30,7 +30,18 @@ export default function OrganizerDashboard() {
     const userDataStr = localStorage.getItem("otix_user");
     if (userDataStr) {
       try {
-        setUser(JSON.parse(userDataStr));
+        const u = JSON.parse(userDataStr);
+        setUser(u);
+        if (typeof u.walletBalance === "number" && u.walletBalance > 0) {
+          setData((prev: any) => ({
+            ...prev,
+            stats: {
+              ...prev.stats,
+              walletBalance: u.walletBalance,
+              revenue: Math.max(prev.stats?.revenue || 0, u.walletBalance)
+            }
+          }));
+        }
       } catch (e) {
         console.error("Failed to parse user data", e);
       }

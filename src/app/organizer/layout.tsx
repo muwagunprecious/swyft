@@ -144,6 +144,24 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       return;
     }
 
+    // Check if JWT token has expired
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          console.warn("Organizer session expired. Redirecting to login...");
+          localStorage.removeItem("otix_token");
+          localStorage.removeItem("otix_user");
+          setAuthorized(false);
+          window.location.href = `/login?redirect=${encodeURIComponent(pathname)}&session=expired`;
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to validate token expiration", e);
+    }
+
     try {
       const parsedUser = JSON.parse(userDataStr);
       if (parsedUser.role === "ORGANIZER" || parsedUser.role === "ADMIN") {

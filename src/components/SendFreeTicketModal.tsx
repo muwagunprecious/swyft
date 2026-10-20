@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 
 interface TicketTier {
@@ -49,43 +49,44 @@ export default function SendFreeTicketModal({
   const [issuedResult, setIssuedResult] = useState<any | null>(null);
 
   // Fetch organizer events when modal opens
-  useEffect(() => {
-    if (!isOpen) return;
+  const fetchEvents = useCallback(async () => {
+    setLoadingEvents(true);
+    setErrorMessage(null);
+    try {
+      const res = await api.get<OrganizerEvent[]>("/organizer/events?lite=true");
+      const allEvents = res.data || [];
+      setEvents(allEvents);
 
-    const fetchEvents = async () => {
-      setLoadingEvents(true);
-      setErrorMessage(null);
-      try {
-        const res = await api.get<OrganizerEvent[]>("/organizer/events");
-        const allEvents = res.data || [];
-        setEvents(allEvents);
-
-        // If preselectedEventId is supplied or only 1 active event exists, select it
-        if (preselectedEventId) {
-          setSelectedEventId(preselectedEventId);
-        } else {
-          // Pre-select first active event if none selected
-          const firstActive = allEvents.find((e) => {
-            if (e.isPassed) return false;
-            if (e.date) {
-              const d = new Date(e.date);
-              d.setHours(23, 59, 59, 999);
-              return d.getTime() >= Date.now();
-            }
-            return true;
-          });
-          if (firstActive) setSelectedEventId(firstActive.id);
-        }
-      } catch (err: any) {
-        console.error("Failed to load organizer events:", err);
-        setErrorMessage("Failed to load events. Please try again.");
-      } finally {
-        setLoadingEvents(false);
+      // If preselectedEventId is supplied or only 1 active event exists, select it
+      if (preselectedEventId) {
+        setSelectedEventId(preselectedEventId);
+      } else {
+        // Pre-select first active event if none selected
+        const firstActive = allEvents.find((e) => {
+          if (e.isPassed) return false;
+          if (e.date) {
+            const d = new Date(e.date);
+            d.setHours(23, 59, 59, 999);
+            return d.getTime() >= Date.now();
+          }
+          return true;
+        });
+        if (firstActive) setSelectedEventId(firstActive.id);
       }
-    };
+    } catch (err: any) {
+      console.error("Failed to load organizer events:", err);
+      const detail = err.response?.data?.message || (err.message?.includes('timeout') ? 'Network timed out. Please try again.' : 'Failed to load events. Please try again.');
+      setErrorMessage(detail);
+    } finally {
+      setLoadingEvents(false);
+    }
+  }, [preselectedEventId]);
 
-    fetchEvents();
-  }, [isOpen, preselectedEventId]);
+  useEffect(() => {
+    if (isOpen) {
+      fetchEvents();
+    }
+  }, [isOpen, fetchEvents]);
 
   // Derive active events (exclude passed events)
   const activeEvents = events.filter((e) => {
@@ -279,8 +280,15 @@ export default function SendFreeTicketModal({
             /* FORM VIEW */
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {errorMessage && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-bold text-red-600">
-                  ⚠️ {errorMessage}
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-600 flex items-center justify-between gap-2">
+                  <span>⚠️ {errorMessage}</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchEvents()}
+                    className="rounded-lg bg-red-100 hover:bg-red-200 text-red-800 px-2.5 py-1 text-[11px] font-bold transition shrink-0 cursor-pointer"
+                  >
+                    Retry
+                  </button>
                 </div>
               )}
 

@@ -7,6 +7,7 @@ import api from '@/lib/api';
 export default function OrganizerEvents() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [origin, setOrigin] = useState('');
 
@@ -36,17 +37,21 @@ export default function OrganizerEvents() {
     }
   };
 
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const res = await api.get('/organizer/events');
+      setEvents(res.data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch events', err);
+      setFetchError(err.response?.data?.message || 'Failed to load events. Please check your connection and retry.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await api.get('/organizer/events');
-        setEvents(res.data);
-      } catch (err) {
-        console.error('Failed to fetch events', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchEvents();
   }, []);
 
@@ -74,6 +79,23 @@ export default function OrganizerEvents() {
           </Link>
         </div>
       </div>
+
+      {/* ── ERROR NOTICE ───────────────────────────────────────────── */}
+      {fetchError && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-800/40 bg-rose-950/30 p-4 text-xs text-rose-300">
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>{fetchError}</span>
+          </div>
+          <button
+            onClick={fetchEvents}
+            type="button"
+            className="rounded-full bg-rose-900/60 hover:bg-rose-900 px-3.5 py-1.5 font-semibold text-rose-200 transition text-[11px] cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* ── EVENTS LIST ───────────────────────────────────────────── */}
       {loading ? (

@@ -77,13 +77,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [registerHref, setRegisterHref] = useState("/register");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [showUniPopup, setShowUniPopup] = useState(false);
   const [pendingRedirect, setPendingRedirect] = useState("/events");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const search = window.location.search;
-      if (search) setRegisterHref(`/register${search}`);
+      if (search) {
+        setRegisterHref(`/register${search}`);
+        const params = new URLSearchParams(search);
+        if (params.get("session") === "expired") {
+          setSessionExpired(true);
+        }
+      }
     }
   }, []);
 
@@ -149,6 +156,13 @@ export default function LoginPage() {
           <p className="text-[14px] text-[#6f7287] mb-6">
             Enter your email and password to access your account.
           </p>
+
+          {sessionExpired && !error && (
+            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-[13px] font-medium text-amber-900 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>Your session has expired. Please sign in again to access your dashboard.</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 rounded border border-[#fecaca] bg-[#fef2f2] p-3 text-[13px] font-medium text-[#d1410c]">

@@ -12,4 +12,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      const isAuthPage = currentPath.startsWith('/login') || currentPath.startsWith('/register');
+      if (!isAuthPage) {
+        console.warn('Session expired or unauthorized (401). Redirecting to login...');
+        localStorage.removeItem('otix_token');
+        localStorage.removeItem('otix_user');
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}&session=expired`;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
