@@ -14,6 +14,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [resetToken, setResetToken] = useState("");
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,9 @@ export default function ForgotPasswordPage() {
 
     try {
       const res = await api.post("/auth/forgot-password", { email: email.trim() });
+      if (res.data.resetToken) {
+        setResetToken(res.data.resetToken);
+      }
       setMessage(res.data.message || "A 6-digit verification code has been sent to your email.");
       setStep("reset");
     } catch (err: any) {
@@ -63,6 +67,7 @@ export default function ForgotPasswordPage() {
         email: email.trim(),
         code: code.trim(),
         newPassword,
+        resetToken,
       });
       setMessage(res.data.message || "Password reset successful! You can now log in.");
       setStep("success");
