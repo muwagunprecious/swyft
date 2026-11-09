@@ -49,6 +49,21 @@ export default function EventCard({
 }: EventCardProps) {
   const formattedDate = formatEventDate(date);
 
+  const isEnded = (() => {
+    try {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return false;
+      if (date.length <= 10) {
+        const endOfDay = new Date(d);
+        endOfDay.setHours(23, 59, 59, 999);
+        return Date.now() > endOfDay.getTime();
+      }
+      return Date.now() > d.getTime();
+    } catch {
+      return false;
+    }
+  })();
+
   return (
     <Link href={`/events/${id}`} className="group block h-full no-underline">
       <article className="grix-card h-full flex flex-col justify-between overflow-hidden transition-all duration-200">
@@ -66,11 +81,15 @@ export default function EventCard({
               {category}
             </span>
           )}
-          {isVotingEnabled && (
+          {isEnded ? (
+            <span className="absolute top-2.5 right-2.5 rounded-full bg-red-950/90 border border-red-700/80 text-red-400 px-2.5 py-0.5 text-[10px] font-bold">
+              Event Ended
+            </span>
+          ) : isVotingEnabled ? (
             <span className="absolute top-2.5 right-2.5 rounded-full bg-[#fafafa] text-[#171717] px-2.5 py-0.5 text-[11px] font-medium">
               Voting Active
             </span>
-          )}
+          ) : null}
           {originalPrice && (
             <span className="absolute bottom-2.5 left-2.5 rounded-full bg-emerald-950/90 border border-emerald-700/80 text-emerald-400 px-2.5 py-0.5 text-[10px] font-bold">
               Discount
@@ -106,7 +125,7 @@ export default function EventCard({
               </span>
             </div>
             <span className="text-[13px] font-medium text-[#fafafa] group-hover:underline">
-              Tickets &rarr;
+              {isEnded ? "View Event \u2192" : "Tickets \u2192"}
             </span>
           </div>
         </div>

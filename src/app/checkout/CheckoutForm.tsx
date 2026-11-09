@@ -86,6 +86,7 @@ export default function CheckoutForm() {
   // Total fees and grand total
   const fee = platformFee + paystackFee;
   const total = subtotal + fee;
+  const isFree = total === 0;
 
   // Retrieve subaccount code from the first cart item (all items belong to the same event)
   const subaccountCode = cartItems.length > 0 ? cartItems[0].subaccountCode : undefined;
@@ -93,7 +94,7 @@ export default function CheckoutForm() {
   const config: any = {
     reference: orderData?.reference || checkoutReference || fallbackRef,
     email: form.email,
-    amount: total * 100, // Paystack expects kobo
+    amount: Math.max(100, total * 100), // Paystack expects kobo (clamped for hook init)
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_demo',
   };
 
@@ -116,12 +117,19 @@ export default function CheckoutForm() {
        ? reference.reference 
        : reference;
 
-     const stepsList = [
-       'Connecting to Paystack secure channel...',
-       'Verifying transaction signature...',
-       'Securing unique admission credentials...',
-       'Generating secure invoice receipt...'
-     ];
+     const stepsList = isFree
+       ? [
+           'Confirming free admission pass...',
+           'Securing unique gate access keys...',
+           'Generating digital admission credentials...',
+           'Finalizing registration...'
+         ]
+       : [
+           'Connecting to Paystack secure channel...',
+           'Verifying transaction signature...',
+           'Securing unique admission credentials...',
+           'Generating secure invoice receipt...'
+         ];
 
      let currentStep = 0;
      const interval = setInterval(() => {
@@ -407,7 +415,7 @@ export default function CheckoutForm() {
                     disabled={loading}
                     className="flex-[2] h-12 rounded-full bg-[#fafafa] text-[#0a0a0a] text-sm font-medium hover:bg-neutral-200 transition disabled:opacity-50"
                   >
-                    {loading ? 'Securing Order...' : 'Confirm & Proceed to Payment &rarr;'}
+                    {loading ? 'Securing Registration...' : isFree ? 'Confirm & Get Free Ticket \u2192' : 'Confirm & Proceed to Payment \u2192'}
                   </button>
                 </div>
               </div>
@@ -420,7 +428,7 @@ export default function CheckoutForm() {
                   Final Step
                 </span>
                 <h2 className="text-2xl md:text-3xl font-light text-[#fafafa] mt-1 mb-2">
-                  Complete Payment
+                  {isFree ? 'Complete Free Registration' : 'Complete Payment'}
                 </h2>
 
                 {/* Countdown Timer Display */}
@@ -436,13 +444,17 @@ export default function CheckoutForm() {
 
                 <div className="text-center py-8 rounded-xl border border-[#374151] bg-[#0a0a0a] mb-8">
                   <p className="text-xs font-medium uppercase tracking-widest text-[#9ca3af] mb-2">
-                    Total Amount Due
+                    {isFree ? 'Admission Price' : 'Total Amount Due'}
                   </p>
                   <p className="text-4xl md:text-5xl font-extralight tracking-tight text-[#fafafa]">
-                    ₦{total.toLocaleString()}
+                    {isFree ? 'Free' : `₦${total.toLocaleString()}`}
                   </p>
                   <p className="text-xs text-[#9ca3af] mt-2">
-                    {fee > 0 ? `Includes ₦${platformFee.toLocaleString()} platform fee (4%) & ₦${paystackFee.toLocaleString()} Paystack fee (1.5%)` : 'No processing fees'}
+                    {isFree
+                      ? 'Complimentary admission · No processing fees'
+                      : fee > 0
+                      ? `Includes ₦${platformFee.toLocaleString()} platform fee (4%) & ₦${paystackFee.toLocaleString()} Paystack fee (1.5%)`
+                      : 'No processing fees'}
                   </p>
                 </div>
 
@@ -456,6 +468,15 @@ export default function CheckoutForm() {
                       alert('Please enter a valid email address');
                       return;
                     }
+
+                    // FREE TICKET FLOW: bypass Paystack completely and finalize registration
+                    if (isFree) {
+                      const refToUse = orderData?.reference || checkoutReference || fallbackRef;
+                      onSuccess(refToUse);
+                      return;
+                    }
+
+                    // PAID TICKET FLOW: initialize Paystack
                     if (total <= 0) {
                       alert('Invalid order amount');
                       return;
@@ -477,13 +498,28 @@ export default function CheckoutForm() {
                       alert('Failed to initialize payment. Please try again.');
                     }
                   }}
-                  className="w-full h-12 rounded-full bg-[#fafafa] text-[#0a0a0a] text-sm font-medium hover:bg-neutral-200 transition shadow-lg flex items-center justify-center gap-2"
+                  className={`w-full h-12 rounded-full text-sm font-medium transition shadow-lg flex items-center justify-center gap-2 ${
+                    isFree
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                      : 'bg-[#fafafa] text-[#0a0a0a] hover:bg-neutral-200'
+                  }`}
                 >
-                  <span>Pay with Paystack</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
+                  {isFree ? (
+                    <>
+                      <span>Claim Free Admission Pass</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span>Pay with Paystack</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </>
+                  )}
                 </button>
 
                 <div className="text-center mt-6">

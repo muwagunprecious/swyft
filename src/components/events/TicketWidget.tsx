@@ -20,9 +20,10 @@ interface Props {
   eventImage: string;
   subaccountCode?: string;
   tickets: Ticket[];
+  isEnded?: boolean;
 }
 
-export default function TicketWidget({ eventId, eventTitle, eventImage, subaccountCode, tickets }: Props) {
+export default function TicketWidget({ eventId, eventTitle, eventImage, subaccountCode, tickets, isEnded = false }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -54,7 +55,7 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
   const available = selectedTicket ? (selectedTicket.quantity - selectedTicket.sold) : 0;
 
   const handleCheckout = () => {
-    if (!selectedTicket) return;
+    if (isEnded || !selectedTicket) return;
     
     const cartItem = {
       ticketId: selectedTicket.id,
@@ -225,10 +226,12 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
       {/* Primary Pill Button */}
       <button
         onClick={handleCheckout}
-        disabled={available <= 0}
+        disabled={isEnded || available <= 0}
         className="btn-primary w-full justify-center !min-h-[52px] !text-[16px] disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        {available <= 0
+        {isEnded
+          ? "Ticket Sales Closed (Event Ended)"
+          : available <= 0
           ? "Sold Out"
           : `Continue to Checkout (${isFree ? "Free" : formatNaira(subtotal)})`}
       </button>

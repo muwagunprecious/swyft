@@ -96,6 +96,20 @@ export default function EventDetailsPage() {
     );
   }
 
+  const isEventEnded = (dateInput?: string): boolean => {
+    if (!dateInput) return false;
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return false;
+    if (dateInput.length <= 10) {
+      const endOfDay = new Date(d);
+      endOfDay.setHours(23, 59, 59, 999);
+      return Date.now() > endOfDay.getTime();
+    }
+    return Date.now() > d.getTime();
+  };
+
+  const isEnded = isEventEnded(event.date);
+
   // Parse date
   const eventDateObj = new Date(event.date);
   const formattedDate = eventDateObj.toLocaleDateString("en-US", {
@@ -258,6 +272,19 @@ export default function EventDetailsPage() {
                 </div>
               )}
 
+              {/* Event Ended Notice */}
+              {isEnded && (
+                <div className="rounded-xl border border-red-500/40 bg-red-950/30 p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-red-400 font-semibold text-[13px]">
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    Event Ended · Ticket Sales Closed
+                  </div>
+                  <p className="text-[12px] font-light text-red-200/80">
+                    This event has concluded. Ticket sales have closed automatically.
+                  </p>
+                </div>
+              )}
+
               {/* Tickets Widget Selection */}
               <TicketWidget 
                 eventId={event.id} 
@@ -265,6 +292,7 @@ export default function EventDetailsPage() {
                 eventImage={event.bannerImage}
                 subaccountCode={event.organizer?.subaccountCode}
                 tickets={tickets} 
+                isEnded={isEnded}
               />
 
             </div>

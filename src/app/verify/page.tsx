@@ -27,7 +27,7 @@ interface AttendeeDetails {
 
 interface VerificationResponse {
   message: string;
-  status: "valid" | "used" | "invalid";
+  status: "valid" | "used" | "invalid" | "unauthorized";
   attendee?: AttendeeDetails;
 }
 
@@ -41,6 +41,7 @@ function VerifyContent() {
   const [showModal, setShowModal] = useState(false);
   const [ticketResult, setTicketResult] = useState<VerificationResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [unauthorizedMessage, setUnauthorizedMessage] = useState<string | null>(null);
   const [recentScans, setRecentScans] = useState<AttendeeDetails[]>([]);
 
   // Clean raw input (handles plain OTX code or full URLs like https://swyft-ticket.name.ng/verify?code=OTX-xxx)
@@ -59,9 +60,23 @@ function VerifyContent() {
 
     setLoading(true);
     setErrorMessage(null);
+    setUnauthorizedMessage(null);
+
+    // Check if user is logged in
+    const token = typeof window !== "undefined" ? localStorage.getItem("otix_token") : null;
+    if (!token) {
+      setLoading(false);
+      setUnauthorizedMessage("You are not authorized to scan this ticket. Tickets can only be scanned by authorized event organizers from their dashboard.");
+      setTicketResult({
+        message: "You are not authorized to scan this ticket",
+        status: "unauthorized",
+      });
+      setShowModal(true);
+      return;
+    }
 
     try {
-      // Use GET to preview ticket details without prematurely consuming the ticket
+      // Use GET to preview ticket details
       const res = await api.get<VerificationResponse>(`/orders/verify-ticket/${encodeURIComponent(code)}`);
       setTicketResult(res.data);
       setShowModal(true);
@@ -74,7 +89,24 @@ function VerifyContent() {
       }
     } catch (err: any) {
       const errRes = err.response?.data;
-      if (errRes?.status === "invalid" || err.response?.status === 404) {
+      const status = err.response?.status;
+
+      if (status === 403 || errRes?.status === "unauthorized") {
+        const msg = errRes?.message || "You are not authorized to scan this ticket";
+        setUnauthorizedMessage(msg);
+        setTicketResult({
+          message: msg,
+          status: "unauthorized",
+        });
+        setShowModal(true);
+      } else if (status === 400 && (errRes?.status === "used" || errRes?.message?.includes("already been used"))) {
+        setTicketResult({
+          message: "This ticket has already been used",
+          status: "used",
+          attendee: errRes?.attendee,
+        });
+        setShowModal(true);
+      } else if (errRes?.status === "invalid" || status === 404) {
         setTicketResult({
           message: errRes?.message || "Invalid ticket: no matching record found.",
           status: "invalid",
@@ -102,7 +134,7 @@ function VerifyContent() {
     setAdmitting(true);
     try {
       const code = ticketResult.attendee.qrCode;
-      const res = await api.post<VerificationResponse>(`/orders/verify-ticket/${encodeURIComponent(code)}`);
+      await api.post<VerificationResponse>(`/orders/verify-ticket/${encodeURIComponent(code)}`);
       setTicketResult((prev) => {
         if (!prev) return null;
         return {
@@ -118,7 +150,20 @@ function VerifyContent() {
         prev.map((item) => (item.qrCode === code ? { ...item, isUsed: true } : item))
       );
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to check in attendee. Please try again.");
+      const errRes = err.response?.data;
+      if (err.response?.status === 403 || errRes?.status === "unauthorized") {
+        alert(errRes?.message || "You are not authorized to scan this ticket");
+      } else if (err.response?.status === 400 && (errRes?.status === "used" || errRes?.message?.includes("already been used"))) {
+        setTicketResult((prev) => prev ? {
+          ...prev,
+          message: "This ticket has already been used",
+          status: "used",
+          attendee: prev.attendee ? { ...prev.attendee, isUsed: true } : undefined,
+        } : null);
+        alert(errRes?.message || "This ticket has already been used");
+      } else {
+        alert(errRes?.message || "Failed to check in attendee. Please try again.");
+      }
     } finally {
       setAdmitting(false);
     }
@@ -152,15 +197,17 @@ function VerifyContent() {
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 sm:inline-flex">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Gate Scanner Active
-            </span>
+            <Link
+              href="/organizer/verification"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-black"
+            >
+              Organizer Dashboard
+            </Link>
             <Link
               href="/"
               className="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50"
             >
-              Exit to Home
+              Home
             </Link>
           </div>
         </div>
@@ -181,9 +228,35 @@ function VerifyContent() {
             Scan & Verify Admission Pass
           </h1>
           <p className="mt-2 text-sm font-semibold text-gray-500">
-            Scan attendee QR codes or enter the verification token to check ticket authenticity, purchaser details, and ticket tier.
+            Scan attendee QR codes or enter the verification token to check ticket authenticity and admit guests.
           </p>
         </div>
+
+        {/* Unauthorized Scanner Notice Banner */}
+        {unauthorizedMessage && (
+          <div className="mt-6 rounded-2xl border border-red-300 bg-red-50 p-6 text-center shadow-md animate-in fade-in">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h3 className="text-base font-extrabold text-red-800">
+              You are not authorized to scan this ticket
+            </h3>
+            <p className="mt-1 text-xs text-red-600 max-w-md mx-auto">
+              Tickets can only be scanned by the authorized event organizer from their Swyft dashboard.
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Link
+                href={`/login?redirect=${encodeURIComponent(`/organizer/verification${codeParam ? `?code=${codeParam}` : ""}`)}`}
+                className="w-full sm:w-auto rounded-full bg-[#d1410c] px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#b03507]"
+              >
+                Log In to Organizer Dashboard
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Verification Card */}
         <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-xl sm:p-8">
@@ -212,6 +285,7 @@ function VerifyContent() {
                     onClick={() => {
                       setInputCode("");
                       setErrorMessage(null);
+                      setUnauthorizedMessage(null);
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-200"
                   >
@@ -251,25 +325,16 @@ function VerifyContent() {
                 )}
               </button>
 
-              <label className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 text-sm font-bold text-gray-700 transition hover:bg-gray-100 active:scale-98">
+              <Link
+                href={`/organizer/verification${inputCode ? `?code=${encodeURIComponent(extractCode(inputCode))}` : ""}`}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 text-sm font-bold text-gray-700 transition hover:bg-gray-100 active:scale-98"
+              >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                   <circle cx="12" cy="13" r="4" />
                 </svg>
-                Scan with Camera
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setErrorMessage("Scanning QR image... You can also copy the verification code directly from the ticket.");
-                    }
-                  }}
-                />
-              </label>
+                Open Dashboard Scanner
+              </Link>
             </div>
           </form>
 
@@ -278,7 +343,7 @@ function VerifyContent() {
             <div className="flex items-start gap-3 text-xs font-semibold text-gray-500">
               <span className="text-base shrink-0">💡</span>
               <p>
-                When an attendee shows their scannable ticket pass on their phone or printable PDF, simply point any mobile camera at the QR code. It will open this verification page and automatically display their details and ticket tier in the pop-up modal.
+                Ticket verification is reserved for authorized event organizers. You must be logged into your organizer account to admit attendees. If using an unauthorized scanner, access will be blocked.
               </p>
             </div>
           </div>
@@ -296,7 +361,7 @@ function VerifyContent() {
                   key={scan.qrCode}
                   onClick={() => {
                     setTicketResult({
-                      message: scan.isUsed ? "Ticket already used" : "Valid ticket",
+                      message: scan.isUsed ? "This ticket has already been used" : "Valid ticket",
                       status: scan.isUsed ? "used" : "valid",
                       attendee: scan,
                     });
@@ -309,8 +374,8 @@ function VerifyContent() {
                     <p className="text-xs text-gray-500">{scan.event} · <span className="font-semibold text-[#d1410c]">{scan.ticketType || scan.type}</span></p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${scan.isUsed ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
-                      {scan.isUsed ? "Checked In" : "Valid"}
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${scan.isUsed ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
+                      {scan.isUsed ? "Checked In (Used)" : "Valid"}
                     </span>
                     <span className="text-gray-400">→</span>
                   </div>
@@ -322,7 +387,7 @@ function VerifyContent() {
       </main>
 
       {/* ════════════════════════════════════════════════════════════ */}
-      {/* TICKET DETAILS POP-UP MODAL (User Request) */}
+      {/* TICKET DETAILS POP-UP MODAL */}
       {/* ════════════════════════════════════════════════════════════ */}
       {showModal && (
         <div
@@ -376,34 +441,14 @@ function VerifyContent() {
             )}
 
             {ticketResult?.status === "used" && (
-              <div className="bg-amber-500 px-6 py-4 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-amber-600 font-black">
-                    !
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider">Ticket Already Used</h3>
-                    <p className="text-xs text-amber-100 font-medium">This pass has already been checked in</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="rounded-full p-1.5 text-amber-100 hover:bg-amber-600 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-
-            {ticketResult?.status === "invalid" && (
               <div className="bg-red-600 px-6 py-4 text-white flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-600 font-black">
-                    ✕
+                    ⚠️
                   </div>
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider">Invalid Ticket</h3>
-                    <p className="text-xs text-red-100 font-medium">No matching pass found on Swyft</p>
+                    <h3 className="text-sm font-black uppercase tracking-wider">This ticket has already been used</h3>
+                    <p className="text-xs text-red-100 font-medium">VOID · This pass was already checked in. Do not admit twice.</p>
                   </div>
                 </div>
                 <button
@@ -415,9 +460,78 @@ function VerifyContent() {
               </div>
             )}
 
+            {ticketResult?.status === "unauthorized" && (
+              <div className="bg-red-700 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-700 font-black">
+                    🔒
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider">Unauthorized Scanner</h3>
+                    <p className="text-xs text-red-100 font-medium">You are not authorized to scan this ticket</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-full p-1.5 text-red-100 hover:bg-red-800 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {ticketResult?.status === "invalid" && (
+              <div className="bg-gray-800 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-800 font-black">
+                    ✕
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider">Invalid Ticket</h3>
+                    <p className="text-xs text-gray-300 font-medium">No matching pass found on Swyft</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-full p-1.5 text-gray-300 hover:bg-gray-700 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Modal Body */}
             <div className="overflow-y-auto p-6 sm:p-7">
-              {ticketResult?.attendee ? (
+              {ticketResult?.status === "unauthorized" ? (
+                <div className="py-6 text-center space-y-4">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    You are not authorized to scan this ticket
+                  </h3>
+                  <p className="text-xs text-gray-600 max-w-sm mx-auto">
+                    Tickets can only be scanned and admitted by the authorized organizer from their dashboard.
+                  </p>
+                  <div className="pt-2 flex flex-col gap-2">
+                    <Link
+                      href={`/login?redirect=${encodeURIComponent(`/organizer/verification${codeParam ? `?code=${codeParam}` : ""}`)}`}
+                      className="rounded-xl bg-[#d1410c] px-6 py-3 text-xs font-bold text-white transition hover:bg-[#b03507]"
+                    >
+                      Log In to Organizer Dashboard
+                    </Link>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="rounded-xl border border-gray-200 px-6 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ) : ticketResult?.attendee ? (
                 <div className="flex flex-col gap-6">
 
                   {/* PROMINENT TICKET TYPE BADGE (VIP, REGULAR, ETC) */}
@@ -433,7 +547,7 @@ function VerifyContent() {
                     </span>
                   </div>
 
-                  {/* PURCHASER DETAILS (User Request: Details of the person that bought the ticket) */}
+                  {/* PURCHASER DETAILS */}
                   <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
                     <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-[#d1410c]">
                       Purchaser / Attendee Details
@@ -509,8 +623,8 @@ function VerifyContent() {
                     )}
 
                     {ticketResult.status === "used" && (
-                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-xs font-bold text-amber-800">
-                        ⚠️ Pass has already been checked in. Do not admit a duplicate attendee.
+                      <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-center text-xs font-bold text-red-700">
+                        ⚠️ VOID: This ticket has already been used. Do not admit a duplicate attendee.
                       </div>
                     )}
 
