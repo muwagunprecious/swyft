@@ -11,6 +11,7 @@ export interface EventCardProps {
   priceLabel?: string;
   originalPrice?: string;
   isVotingEnabled?: boolean;
+  isTicketSalesClosed?: boolean;
 }
 
 export function formatEventDate(dateString: string) {
@@ -46,6 +47,7 @@ export default function EventCard({
   priceLabel = "Get Tickets",
   originalPrice,
   isVotingEnabled = false,
+  isTicketSalesClosed = false,
 }: EventCardProps) {
   const formattedDate = formatEventDate(date);
 
@@ -84,6 +86,10 @@ export default function EventCard({
           {isEnded ? (
             <span className="absolute top-2.5 right-2.5 rounded-full bg-red-950/90 border border-red-700/80 text-red-400 px-2.5 py-0.5 text-[10px] font-bold">
               Event Ended
+            </span>
+          ) : isTicketSalesClosed ? (
+            <span className="absolute top-2.5 right-2.5 rounded-full bg-rose-950/90 border border-rose-700/80 text-rose-400 px-2.5 py-0.5 text-[10px] font-bold">
+              Sales Closed
             </span>
           ) : isVotingEnabled ? (
             <span className="absolute top-2.5 right-2.5 rounded-full bg-[#fafafa] text-[#171717] px-2.5 py-0.5 text-[11px] font-medium">
@@ -125,7 +131,7 @@ export default function EventCard({
               </span>
             </div>
             <span className="text-[13px] font-medium text-[#fafafa] group-hover:underline">
-              {isEnded ? "View Event \u2192" : "Tickets \u2192"}
+              {isEnded || isTicketSalesClosed ? "View Event \u2192" : "Tickets \u2192"}
             </span>
           </div>
         </div>

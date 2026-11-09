@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     "swyft ticket",
     "university party tickets",
     "unilag tickets",
+    "unizik tickets",
     "oou tickets",
     "ui tickets",
     "lasu tickets",

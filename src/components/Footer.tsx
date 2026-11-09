@@ -13,6 +13,7 @@ const footerLinks = {
     ["OOU Tickets", "/events?university=OOU"],
     ["UI Tickets", "/events?university=UI"],
     ["LASU Tickets", "/events?university=LASU"],
+    ["UNIZIK Tickets", "/events?university=UNIZIK"],
     ["UNIBEN & More", "/events"],
   ],
   "Platform": [

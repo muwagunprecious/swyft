@@ -12,6 +12,34 @@ export default function TicketingModule() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFreeTicketModalOpen, setIsFreeTicketModalOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [togglingEventId, setTogglingEventId] = useState<string | null>(null);
+
+  const handleToggleSales = async (event: any) => {
+    const nextState = !Boolean(event.isTicketSalesClosed);
+    const confirmMsg = nextState
+      ? `Are you sure you want to end ticket sales for "${event.title}"? Attendees will no longer be able to purchase tickets.`
+      : `Reopen ticket sales for "${event.title}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    setTogglingEventId(event.id);
+    try {
+      await api.put(`/organizer/events/${event.id}/ticket-sales`, {
+        isTicketSalesClosed: nextState
+      });
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === event.id
+            ? { ...e, isTicketSalesClosed: nextState }
+            : e
+        )
+      );
+    } catch (err: any) {
+      console.error('Failed to toggle ticket sales', err);
+      alert(err.response?.data?.message || 'Failed to update ticket sales status');
+    } finally {
+      setTogglingEventId(null);
+    }
+  };
   
   // New Ticket State
   const [newTicket, setNewTicket] = useState({
@@ -101,22 +129,45 @@ export default function TicketingModule() {
         <div className="flex flex-col gap-6">
           {events.map(event => (
             <div key={event.id} className="rounded-2xl border border-[#262626] bg-[#121212] shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-[#262626] bg-[#141414] flex justify-between items-center">
+              <div className="p-5 border-b border-[#262626] bg-[#141414] flex flex-wrap justify-between items-center gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#171717] border border-[#262626] text-[#fafafa] flex items-center justify-center">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-[#fafafa]">{event.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-[#fafafa]">{event.title}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        event.isTicketSalesClosed
+                          ? "border-rose-800/40 bg-rose-950/40 text-rose-400"
+                          : "border-emerald-800/40 bg-emerald-950/40 text-emerald-400"
+                      }`}>
+                        {event.isTicketSalesClosed ? "Sales Closed" : "Sales Open"}
+                      </span>
+                    </div>
                     <p className="text-[11px] text-[#9ca3af]">{new Date(event.date).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => { setSelectedEventId(event.id); setIsModalOpen(true); }}
-                  className="rounded-full border border-[#262626] bg-[#171717] px-3.5 py-1.5 text-xs font-semibold text-[#fafafa] transition hover:bg-[#202020] hover:border-[#374151]"
-                >
-                  + Add Tier
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggleSales(event)}
+                    disabled={togglingEventId === event.id}
+                    type="button"
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition border cursor-pointer ${
+                      event.isTicketSalesClosed
+                        ? 'border-emerald-800/40 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40'
+                        : 'border-rose-800/40 bg-rose-950/40 text-rose-400 hover:bg-rose-900/40'
+                    }`}
+                  >
+                    {togglingEventId === event.id ? '...' : event.isTicketSalesClosed ? 'Reopen Sales' : 'End Sales'}
+                  </button>
+                  <button 
+                    onClick={() => { setSelectedEventId(event.id); setIsModalOpen(true); }}
+                    className="rounded-full border border-[#262626] bg-[#171717] px-3.5 py-1.5 text-xs font-semibold text-[#fafafa] transition hover:bg-[#202020] hover:border-[#374151]"
+                  >
+                    + Add Tier
+                  </button>
+                </div>
               </div>
 
               <div className="p-0 overflow-x-auto">

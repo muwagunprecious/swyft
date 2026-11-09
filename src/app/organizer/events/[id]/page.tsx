@@ -37,6 +37,37 @@ export default function EventDetailManagement() {
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState('');
 
+  // Ticket sales state
+  const [isTogglingSales, setIsTogglingSales] = useState(false);
+  const [salesSuccessMessage, setSalesSuccessMessage] = useState('');
+
+  const handleToggleTicketSales = async () => {
+    if (!event) return;
+    const nextState = !Boolean(event.isTicketSalesClosed);
+    const confirmMsg = nextState
+      ? `Are you sure you want to end ticket sales for "${event.title}"? Attendees will no longer be able to purchase tickets.`
+      : `Do you want to reopen ticket sales for "${event.title}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsTogglingSales(true);
+    try {
+      const res = await api.put(`/organizer/events/${id}/ticket-sales`, {
+        isTicketSalesClosed: nextState,
+      });
+      setEvent((prev: any) => ({
+        ...prev,
+        isTicketSalesClosed: nextState,
+      }));
+      setSalesSuccessMessage(res.data.message || (nextState ? 'Ticket sales closed' : 'Ticket sales reopened'));
+      setTimeout(() => setSalesSuccessMessage(''), 4000);
+    } catch (err: any) {
+      console.error('Failed to toggle ticket sales', err);
+      alert(err.response?.data?.message || 'Failed to update ticket sales status');
+    } finally {
+      setIsTogglingSales(false);
+    }
+  };
+
   const handleSaveDiscount = async (remove = false) => {
     if (!selectedTicketForDiscount) return;
     setSavingDiscount(true);
@@ -233,6 +264,19 @@ export default function EventDetailManagement() {
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#fafafa] md:text-3xl">{event.title}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={handleToggleTicketSales}
+            disabled={isTogglingSales}
+            type="button"
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition border cursor-pointer ${
+              event.isTicketSalesClosed
+                ? "border-emerald-800/40 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40"
+                : "border-rose-800/40 bg-rose-950/40 text-rose-400 hover:bg-rose-900/40"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${event.isTicketSalesClosed ? "bg-emerald-400" : "bg-rose-500 animate-pulse"}`} />
+            {isTogglingSales ? "Updating..." : event.isTicketSalesClosed ? "Reopen Ticket Sales" : "End Ticket Sales"}
+          </button>
           <button 
             onClick={handleShareEvent}
             type="button"
@@ -262,6 +306,34 @@ export default function EventDetailManagement() {
           </Link>
         </div>
       </div>
+
+      {/* ── SALES NOTIFICATION BANNERS ─────────────────────────── */}
+      {salesSuccessMessage && (
+        <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-800/40 bg-emerald-950/40 px-4 py-3 text-xs font-semibold text-emerald-300">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>{salesSuccessMessage}</span>
+        </div>
+      )}
+
+      {event.isTicketSalesClosed && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-rose-800/40 bg-rose-950/30 p-4 text-xs text-rose-300">
+          <div className="flex items-center gap-3">
+            <span className="flex h-3 w-3 rounded-full bg-rose-500 shadow-sm" />
+            <div>
+              <p className="font-bold text-rose-200">Ticket Sales Ended by Organizer</p>
+              <p className="text-[11px] text-rose-400 mt-0.5">Attendees visiting your public event page can no longer buy or claim tickets.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleToggleTicketSales}
+            disabled={isTogglingSales}
+            type="button"
+            className="rounded-full bg-emerald-600 hover:bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white transition cursor-pointer self-start sm:self-auto shrink-0 shadow-sm"
+          >
+            Reopen Ticket Sales
+          </button>
+        </div>
+      )}
 
       {/* ── METRICS GRID ────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -393,11 +465,24 @@ export default function EventDetailManagement() {
 
           {/* Ticket Tiers list */}
           <div className="rounded-2xl border border-[#262626] bg-[#121212] shadow-sm overflow-hidden">
-            <div className="border-b border-[#262626] px-6 py-4 bg-[#141414] flex items-center justify-between">
+            <div className="border-b border-[#262626] px-6 py-4 bg-[#141414] flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-[#fafafa]">Ticket Tiers & Pricing</h3>
                 <p className="text-[11px] text-[#9ca3af]">Add flash discounts with time-limited countdowns</p>
               </div>
+              <button
+                onClick={handleToggleTicketSales}
+                disabled={isTogglingSales}
+                type="button"
+                className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold transition border cursor-pointer ${
+                  event.isTicketSalesClosed
+                    ? "border-emerald-800/40 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40"
+                    : "border-rose-800/40 bg-rose-950/40 text-rose-400 hover:bg-rose-900/40"
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${event.isTicketSalesClosed ? "bg-emerald-400" : "bg-rose-500 animate-pulse"}`} />
+                {event.isTicketSalesClosed ? "Reopen Sales" : "End Ticket Sales"}
+              </button>
             </div>
             <div className="divide-y divide-[#262626]">
               {tickets.length === 0 ? (

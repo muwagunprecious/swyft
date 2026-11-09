@@ -56,6 +56,7 @@ export const universities = [
   "UNIBEN",
   "ABU",
   "UNN",
+  "UNIZIK",
   "Others",
 ];
 

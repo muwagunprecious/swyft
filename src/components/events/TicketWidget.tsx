@@ -21,9 +21,10 @@ interface Props {
   subaccountCode?: string;
   tickets: Ticket[];
   isEnded?: boolean;
+  closedReason?: string;
 }
 
-export default function TicketWidget({ eventId, eventTitle, eventImage, subaccountCode, tickets, isEnded = false }: Props) {
+export default function TicketWidget({ eventId, eventTitle, eventImage, subaccountCode, tickets, isEnded = false, closedReason }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -230,7 +231,7 @@ export default function TicketWidget({ eventId, eventTitle, eventImage, subaccou
         className="btn-primary w-full justify-center !min-h-[52px] !text-[16px] disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {isEnded
-          ? "Ticket Sales Closed (Event Ended)"
+          ? (closedReason || "Ticket Sales Closed")
           : available <= 0
           ? "Sold Out"
           : `Continue to Checkout (${isFree ? "Free" : formatNaira(subtotal)})`}

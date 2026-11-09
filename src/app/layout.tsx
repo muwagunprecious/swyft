@@ -41,6 +41,7 @@ export const metadata: Metadata = {
     "university event tickets",
     // Major Nigerian Campuses
     "unilag tickets",
+    "unizik tickets",
     "oou tickets",
     "ui tickets",
     "lasu tickets",

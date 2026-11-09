@@ -36,6 +36,7 @@ const featuredCampuses = [
   { code: "FUNAAB", name: "Federal Univ. of Agriculture", state: "Ogun" },
   { code: "UNN", name: "University of Nigeria", state: "Enugu" },
   { code: "ABU", name: "Ahmadu Bello University", state: "Kaduna" },
+  { code: "UNIZIK", name: "Nnamdi Azikiwe University", state: "Anambra" },
   { code: "CU", name: "Covenant University", state: "Ogun" },
   { code: "UNILORIN", name: "University of Ilorin", state: "Kwara" },
 ];
@@ -259,6 +260,7 @@ export default function HomePage() {
                   priceLabel={priceLabel}
                   originalPrice={originalPriceStr}
                   isVotingEnabled={event.isVotingEnabled}
+                  isTicketSalesClosed={Boolean((event as any).isTicketSalesClosed)}
                 />
               );
             })}

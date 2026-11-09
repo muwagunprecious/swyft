@@ -1,4 +1,4 @@
-import { votingCampaigns } from "@/lib/swyft-data";
+import { votingCampaigns, universities } from "@/lib/swyft-data";
 
 export default function VotingPage() {
   const featured = votingCampaigns[1];
@@ -15,7 +15,12 @@ export default function VotingPage() {
           </p>
           <div className="mt-6 grid gap-3 md:grid-cols-[1fr_220px_220px]">
             <input className="input" placeholder="Search campaign, candidate, university" />
-            <select className="input"><option>All Universities</option><option>OOU</option><option>UNILAG</option></select>
+            <select className="input">
+              <option value="">All Universities</option>
+              {universities.map((uni) => (
+                <option key={uni} value={uni}>{uni}</option>
+              ))}
+            </select>
             <select className="input"><option>Trending</option><option>Ending Soon</option><option>Recently Added</option></select>
           </div>
         </div>

@@ -9,7 +9,35 @@ export default function OrganizerEvents() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [origin, setOrigin] = useState('');
+
+  const handleToggleSales = async (event: any) => {
+    const nextState = !Boolean(event.isTicketSalesClosed);
+    const confirmMsg = nextState
+      ? `Are you sure you want to end ticket sales for "${event.title}"? Attendees will no longer be able to buy tickets.`
+      : `Reopen ticket sales for "${event.title}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    setTogglingId(event.id);
+    try {
+      await api.put(`/organizer/events/${event.id}/ticket-sales`, {
+        isTicketSalesClosed: nextState
+      });
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === event.id
+            ? { ...e, isTicketSalesClosed: nextState, status: nextState ? 'SALES CLOSED' : 'PUBLISHED' }
+            : e
+        )
+      );
+    } catch (err: any) {
+      console.error('Failed to toggle ticket sales', err);
+      alert(err.response?.data?.message || 'Failed to update ticket sales status');
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -144,11 +172,15 @@ export default function OrganizerEvents() {
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <h3 className="text-base font-bold text-[#fafafa] leading-tight line-clamp-1">{event.title}</h3>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider whitespace-nowrap border ${
-                    event.status === 'PUBLISHED' 
+                    event.isTicketSalesClosed
+                      ? 'border-rose-800/40 bg-rose-950/40 text-rose-400'
+                      : event.isPassed
+                      ? 'border-zinc-800 bg-zinc-900 text-zinc-400'
+                      : event.status === 'PUBLISHED' 
                       ? 'border-emerald-800/40 bg-emerald-950/40 text-emerald-400' 
                       : 'border-amber-800/40 bg-amber-950/40 text-amber-400'
                   }`}>
-                    {event.status || 'DRAFT'}
+                    {event.isTicketSalesClosed ? 'SALES CLOSED' : event.isPassed ? 'EVENT ENDED' : event.status || 'PUBLISHED'}
                   </span>
                 </div>
                 <p className="text-xs font-medium text-[#9ca3af] mb-4 line-clamp-2 leading-relaxed">{event.description || 'No description provided.'}</p>
@@ -167,11 +199,26 @@ export default function OrganizerEvents() {
               </div>
 
               {/* Actions Footer */}
-              <div className="bg-[#171717] border-t border-[#262626] p-3 flex justify-between items-center">
-                <Link href={`/organizer/events/${event.id}`} className="text-xs font-semibold text-[#fafafa] hover:underline flex items-center gap-1.5 px-2 py-1 no-underline">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
-                  Manage
-                </Link>
+              <div className="bg-[#171717] border-t border-[#262626] p-3 flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Link href={`/organizer/events/${event.id}`} className="text-xs font-semibold text-[#fafafa] hover:underline flex items-center gap-1.5 px-2 py-1 no-underline">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+                    Manage
+                  </Link>
+                  <button
+                    onClick={() => handleToggleSales(event)}
+                    disabled={togglingId === event.id}
+                    type="button"
+                    className={`text-[11px] font-semibold transition px-2.5 py-1 rounded-full cursor-pointer border ${
+                      event.isTicketSalesClosed
+                        ? 'border-emerald-800/40 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900/40'
+                        : 'border-rose-800/40 bg-rose-950/40 text-rose-400 hover:bg-rose-900/40'
+                    }`}
+                    title={event.isTicketSalesClosed ? "Reopen ticket sales" : "End ticket sales"}
+                  >
+                    {togglingId === event.id ? '...' : event.isTicketSalesClosed ? 'Reopen' : 'End Sales'}
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleShare(event)}

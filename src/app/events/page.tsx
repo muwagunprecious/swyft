@@ -13,6 +13,7 @@ interface ApiEvent {
   date: string;
   location: string;
   category: string;
+  isTicketSalesClosed?: boolean;
   organizer?: { name: string };
   Ticket?: { name: string; price: number; quantity: number; sold: number }[];
 }
@@ -24,6 +25,16 @@ export default function EventsPage() {
   const [view, setView] = useState<"grid" | "map">("grid");
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const uniParam = params.get("university");
+      if (uniParam) setUniversity(uniParam);
+      const catParam = params.get("category");
+      if (catParam) setCategory(catParam);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -44,9 +55,10 @@ export default function EventsPage() {
       const haystack = `${event.title} ${event.location} ${event.category} ${event.organizer?.name || ""}`.toLowerCase();
       const matchesQuery = haystack.includes(query.toLowerCase());
       const matchesCategory = category === "All" || event.category === category;
-      return matchesQuery && matchesCategory;
+      const matchesUni = university === "All" || haystack.includes(university.toLowerCase());
+      return matchesQuery && matchesCategory && matchesUni;
     });
-  }, [query, category, events]);
+  }, [query, category, university, events]);
 
   const getPriceLabel = (event: ApiEvent) => {
     const tickets = event.Ticket || [];
@@ -75,6 +87,22 @@ export default function EventsPage() {
                 className="h-10 w-full rounded-full bg-[#f8f7fa] pl-10 pr-4 text-sm font-medium text-[#1e0a3c] outline-none transition focus:bg-white focus:ring-2 focus:ring-[#f05537]"
                 placeholder="Search events, organizers, or locations"
               />
+            </div>
+
+            <div className="relative">
+              <select
+                value={university}
+                onChange={(e) => setUniversity(e.target.value)}
+                className="h-10 rounded-full border border-gray-200 bg-[#f8f7fa] px-4 pr-9 text-xs font-bold text-[#1e0a3c] outline-none transition focus:bg-white focus:ring-2 focus:ring-[#f05537] appearance-none cursor-pointer"
+              >
+                <option value="All">All Campuses</option>
+                {universities.map((uni) => (
+                  <option key={uni} value={uni}>{uni}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
             </div>
             
             <div className="hidden h-10 items-center rounded-full border border-gray-200 p-1 md:flex">
@@ -182,6 +210,11 @@ export default function EventsPage() {
                       <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-black text-white backdrop-blur">
                         {event.category}
                       </span>
+                      {event.isTicketSalesClosed && (
+                        <span className="absolute left-3 bottom-3 rounded-full bg-rose-950/90 border border-rose-700/80 px-2.5 py-0.5 text-[10px] font-bold text-rose-300 backdrop-blur">
+                          Sales Closed
+                        </span>
+                      )}
                     </div>
                     <div className="mt-4">
                       <h3 className="text-lg font-bold text-[#1e0a3c] line-clamp-2 leading-tight group-hover:text-[#f05537] transition-colors">{event.title}</h3>
