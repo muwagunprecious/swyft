@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import jsQR from "jsqr";
 
 interface Attendee {
   id: string;
@@ -27,6 +28,32 @@ interface ScanAlert {
 
 const mockAttendees: Attendee[] = [];
 
+// Soft audio chime on successful QR scan
+function playScanChime() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (e) {
+    // Autoplay restrictions or audio unsupported
+  }
+}
+
 function VerificationContent() {
   const searchParams = useSearchParams();
   const codeParam = searchParams.get("code") || "";
@@ -39,12 +66,22 @@ function VerificationContent() {
   const [justCheckedIn, setJustCheckedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+
+  // Camera & Scanner state
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isInitializingCamera, setIsInitializingCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [torchActive, setTorchActive] = useState(false);
+  const [qrDetected, setQrDetected] = useState(false);
   const [scanAlert, setScanAlert] = useState<ScanAlert | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const scanIntervalRef = useRef<any>(null);
+  const scanFrameRef = useRef<number | null>(null);
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const fetchAttendees = async () => {
@@ -72,23 +109,47 @@ function VerificationContent() {
 
   const checkedInCount = attendees.filter((a) => a.status === "checked-in").length;
 
+  // Extracts ticket verification code from raw string or full URL
   const extractCode = (str: string): string => {
     if (!str) return "";
-    const match = str.match(/(?:code=|^)(OTX-[a-zA-Z0-9-]+)/i);
-    return match ? match[1] : str.trim();
+    const trimmed = str.trim();
+
+    // 1. URL with ?code=...
+    const paramMatch = trimmed.match(/[?&]code=([a-zA-Z0-9-]+)/i);
+    if (paramMatch) return paramMatch[1];
+
+    // 2. URL path with /verify-ticket/... or /verify/...
+    const pathMatch = trimmed.match(/(?:\/verify-ticket\/|\/verify\/)([a-zA-Z0-9-]+)/i);
+    if (pathMatch) return pathMatch[1];
+
+    // 3. Raw OTX code
+    const otxMatch = trimmed.match(/(OTX-[a-zA-Z0-9-]+)/i);
+    if (otxMatch) return otxMatch[1];
+
+    // 4. Raw UUID format
+    const uuidMatch = trimmed.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    if (uuidMatch) return uuidMatch[1];
+
+    return trimmed;
   };
 
   // Stop camera stream safely
   const stopCamera = useCallback(() => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-      scanIntervalRef.current = null;
+    if (scanFrameRef.current) {
+      cancelAnimationFrame(scanFrameRef.current);
+      scanFrameRef.current = null;
     }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
+    setIsInitializingCamera(false);
+    setTorchActive(false);
+    setQrDetected(false);
   }, []);
 
   // Main verification handler for QR code or Attendee ID
@@ -181,6 +242,229 @@ function VerificationContent() {
     }
   }, [stopCamera]);
 
+  // Continuous frame scanner using jsQR + BarcodeDetector fallback
+  const startContinuousScanning = useCallback(() => {
+    if (scanFrameRef.current) {
+      cancelAnimationFrame(scanFrameRef.current);
+      scanFrameRef.current = null;
+    }
+
+    if (!offscreenCanvasRef.current && typeof document !== "undefined") {
+      offscreenCanvasRef.current = document.createElement("canvas");
+    }
+    const canvas = offscreenCanvasRef.current;
+    const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+
+    let lastScanTime = 0;
+    let isProcessing = false;
+
+    // Optional native BarcodeDetector fast path
+    let barcodeDetector: any = null;
+    if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+      try {
+        barcodeDetector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+      } catch (e) {
+        barcodeDetector = null;
+      }
+    }
+
+    const scanTick = async (timestamp: number) => {
+      const video = videoRef.current;
+      if (!video || !mediaStreamRef.current) return;
+
+      // Throttle to scan every ~100ms for high responsiveness without freezing the UI
+      if (timestamp - lastScanTime > 100 && !isProcessing) {
+        lastScanTime = timestamp;
+
+        if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+          isProcessing = true;
+          try {
+            let decodedText = "";
+
+            // 1. Try native BarcodeDetector if available
+            if (barcodeDetector) {
+              try {
+                const barcodes = await barcodeDetector.detect(video);
+                if (barcodes && barcodes.length > 0 && barcodes[0]?.rawValue) {
+                  decodedText = barcodes[0].rawValue;
+                }
+              } catch (detErr) {
+                // fall back to jsQR
+              }
+            }
+
+            // 2. High-reliability universal jsQR decoder
+            if (!decodedText && canvas && ctx) {
+              const width = video.videoWidth;
+              const height = video.videoHeight;
+              canvas.width = width;
+              canvas.height = height;
+              ctx.drawImage(video, 0, 0, width, height);
+
+              const imageData = ctx.getImageData(0, 0, width, height);
+              const qr = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert",
+              });
+
+              if (qr && qr.data && qr.data.trim()) {
+                decodedText = qr.data.trim();
+              }
+            }
+
+            // 3. If a QR code is found, trigger verification
+            if (decodedText) {
+              playScanChime();
+              setQrDetected(true);
+              stopCamera();
+              handleVerifyTicket(decodedText);
+              return; // Stop animation loop
+            }
+          } catch (scanErr) {
+            console.warn("Scan frame error:", scanErr);
+          } finally {
+            isProcessing = false;
+          }
+        }
+      }
+
+      scanFrameRef.current = requestAnimationFrame(scanTick);
+    };
+
+    scanFrameRef.current = requestAnimationFrame(scanTick);
+  }, [handleVerifyTicket, stopCamera]);
+
+  // Start device camera
+  const startCamera = async (overrideFacing?: "environment" | "user") => {
+    setScanAlert(null);
+    setCameraError(null);
+    setQrDetected(false);
+    setIsInitializingCamera(true);
+
+    if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError(
+        "Camera access is not supported by your browser or requires a secure connection (HTTPS / localhost)."
+      );
+      setIsInitializingCamera(false);
+      return;
+    }
+
+    // Stop any existing stream
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (scanFrameRef.current) {
+      cancelAnimationFrame(scanFrameRef.current);
+      scanFrameRef.current = null;
+    }
+
+    const desiredFacing = overrideFacing || cameraFacingMode;
+
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: desiredFacing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch (initialErr) {
+        // Fallback constraint for devices without environment facing camera
+        console.warn("Ideal facing mode constraint failed, falling back to basic video:", initialErr);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+
+      mediaStreamRef.current = stream;
+      setIsCameraActive(true);
+      setIsInitializingCamera(false);
+
+      // Check for flashlight capability
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        const capabilities: any = typeof videoTrack.getCapabilities === "function" ? videoTrack.getCapabilities() : {};
+        setHasTorch(Boolean(capabilities?.torch));
+      }
+
+      // Check if device has multiple cameras (back and front)
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter((d) => d.kind === "videoinput");
+        setHasMultipleCameras(videoInputs.length > 1);
+      } catch (devErr) {
+        // ignore
+      }
+
+      // Attach stream to video tag
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute("playsinline", "true");
+        await videoRef.current.play().catch((playErr) => console.warn("Video play interrupted:", playErr));
+        startContinuousScanning();
+      }
+    } catch (err: any) {
+      console.error("Camera access failed:", err);
+      setIsInitializingCamera(false);
+      setIsCameraActive(false);
+
+      let msg = "Unable to access camera.";
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        msg = "Camera permission was denied. Please allow camera permissions in your browser address bar/settings, or enter the code manually below.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        msg = "No camera found on this device. You can type or paste the ticket code manually.";
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        msg = "Camera is currently in use by another application. Please close other camera apps and retry.";
+      }
+      setCameraError(msg);
+    }
+  };
+
+  // Flip front / back camera
+  const toggleFacingMode = () => {
+    const nextMode = cameraFacingMode === "environment" ? "user" : "environment";
+    setCameraFacingMode(nextMode);
+    if (isCameraActive) {
+      startCamera(nextMode);
+    }
+  };
+
+  // Toggle torch / flashlight on supported mobile devices
+  const toggleTorch = async () => {
+    if (!mediaStreamRef.current) return;
+    const track = mediaStreamRef.current.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const nextTorch = !torchActive;
+      await (track as any).applyConstraints({
+        advanced: [{ torch: nextTorch }],
+      });
+      setTorchActive(nextTorch);
+    } catch (e) {
+      console.warn("Torch error:", e);
+    }
+  };
+
+  // Ensure video element receives stream whenever it becomes active in DOM
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && mediaStreamRef.current) {
+      const video = videoRef.current;
+      if (video.srcObject !== mediaStreamRef.current) {
+        video.srcObject = mediaStreamRef.current;
+      }
+      video.setAttribute("playsinline", "true");
+      video.play().then(() => {
+        startContinuousScanning();
+      }).catch((playErr) => {
+        console.warn("Video play error on state sync:", playErr);
+      });
+    }
+  }, [isCameraActive, startContinuousScanning]);
+
   // Auto-verify if code parameter is in URL
   useEffect(() => {
     if (codeParam) {
@@ -195,49 +479,6 @@ function VerificationContent() {
       stopCamera();
     };
   }, [stopCamera]);
-
-  // Start camera scanner
-  const startCamera = async () => {
-    setScanAlert(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      mediaStreamRef.current = stream;
-      setIsCameraActive(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-
-      // If BarcodeDetector is natively supported, scan frames continuously
-      if (typeof window !== "undefined" && "BarcodeDetector" in window) {
-        try {
-          const barcodeDetector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
-          scanIntervalRef.current = setInterval(async () => {
-            if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-              try {
-                const barcodes = await barcodeDetector.detect(videoRef.current);
-                if (barcodes.length > 0 && barcodes[0].rawValue) {
-                  stopCamera();
-                  handleVerifyTicket(barcodes[0].rawValue);
-                }
-              } catch (detectErr) {
-                // Ignore frame parse misses
-              }
-            }
-          }, 300);
-        } catch (e) {
-          console.warn("BarcodeDetector setup error:", e);
-        }
-      }
-    } catch (err: any) {
-      console.error("Camera access failed:", err);
-      alert("Unable to access camera. Please allow camera permissions in your browser or type the verification code.");
-      setIsCameraActive(false);
-    }
-  };
 
   const handleSelect = (a: Attendee) => {
     setSelected(a);
@@ -331,9 +572,28 @@ function VerificationContent() {
           </div>
           <button
             onClick={() => setScanAlert(null)}
-            className="text-gray-400 hover:text-white p-1"
+            className="text-gray-400 hover:text-white p-1 cursor-pointer"
           >
             ✕
+          </button>
+        </div>
+      )}
+
+      {/* CAMERA ERROR BANNER */}
+      {cameraError && (
+        <div className="rounded-2xl border border-rose-800/40 bg-rose-950/30 p-4 text-xs text-rose-300 flex items-start justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <span className="text-base">📷</span>
+            <div>
+              <p className="font-bold text-rose-200">Camera Notice</p>
+              <p className="mt-0.5 text-rose-300/90 leading-relaxed">{cameraError}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => startCamera()}
+            className="rounded-full bg-rose-900/60 hover:bg-rose-900 px-3.5 py-1.5 font-semibold text-rose-200 transition text-[11px] cursor-pointer shrink-0"
+          >
+            Retry Camera
           </button>
         </div>
       )}
@@ -344,55 +604,108 @@ function VerificationContent() {
 
           {/* DEDICATED QR SCANNER CARD */}
           <div className="rounded-2xl border border-[#262626] bg-[#121212] p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-bold text-[#fafafa] flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#d1410c] text-white text-xs">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#d1410c] text-white text-xs font-black">
                     QR
                   </span>
                   Organizer Gate Scanner
                 </h2>
                 <p className="mt-1 text-xs text-[#9ca3af]">
-                  Point camera at attendee QR pass or enter token code to verify and admit.
+                  Point camera at attendee QR pass to auto-detect and admit instantly.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={isCameraActive ? stopCamera : startCamera}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                  isCameraActive
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "border border-[#374151] bg-[#1a1a1a] text-[#fafafa] hover:bg-[#262626]"
-                }`}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-                {isCameraActive ? "Stop Camera" : "Open Camera"}
-              </button>
+
+              <div className="flex items-center gap-2">
+                {isCameraActive && hasMultipleCameras && (
+                  <button
+                    type="button"
+                    onClick={toggleFacingMode}
+                    className="flex items-center gap-1.5 rounded-full border border-[#374151] bg-[#1a1a1a] px-3 py-1.5 text-xs font-semibold text-[#fafafa] transition hover:bg-[#262626]"
+                    title="Switch camera"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 16v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" />
+                      <path d="m16 8-4-4-4 4" />
+                      <path d="M12 4v12" />
+                    </svg>
+                    Flip
+                  </button>
+                )}
+
+                {isCameraActive && hasTorch && (
+                  <button
+                    type="button"
+                    onClick={toggleTorch}
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      torchActive
+                        ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                        : "border-[#374151] bg-[#1a1a1a] text-[#fafafa] hover:bg-[#262626]"
+                    }`}
+                    title="Toggle flashlight"
+                  >
+                    🔦 {torchActive ? "Torch On" : "Torch"}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={isCameraActive ? stopCamera : () => startCamera()}
+                  disabled={isInitializingCamera}
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition cursor-pointer shadow-sm ${
+                    isCameraActive
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-[#fafafa] text-[#0a0a0a] hover:bg-white"
+                  }`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  {isInitializingCamera ? "Opening..." : isCameraActive ? "Stop Camera" : "Open Camera Scanner"}
+                </button>
+              </div>
             </div>
 
             {/* CAMERA VIEWFINDER */}
             {isCameraActive && (
-              <div className="relative overflow-hidden rounded-2xl border-2 border-[#d1410c] bg-black aspect-video flex items-center justify-center">
+              <div className="relative overflow-hidden rounded-2xl border-2 border-[#d1410c] bg-black aspect-video sm:aspect-[16/10] flex items-center justify-center">
                 <video
                   ref={videoRef}
+                  autoPlay
                   playsInline
                   muted
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) {
+                      videoRef.current.play().catch((e) => console.warn("Video play error:", e));
+                      startContinuousScanning();
+                    }
+                  }}
                   className="w-full h-full object-cover"
                 />
-                {/* Scanner Target Reticle */}
+
+                {/* Laser Scanning Reticle */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-48 h-48 border-2 border-[#d1410c] rounded-2xl relative animate-pulse">
-                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-white rounded-tl" />
-                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-white rounded-tr" />
-                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-white rounded-bl" />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-white rounded-br" />
+                  <div className={`w-52 h-52 sm:w-64 sm:h-64 border-2 rounded-2xl relative transition-all duration-300 ${
+                    qrDetected ? "border-emerald-400 bg-emerald-500/10 shadow-[0_0_30px_rgba(52,211,153,0.5)]" : "border-[#d1410c]"
+                  }`}>
+                    {/* Scanner corner markers */}
+                    <div className="absolute -top-1 -left-1 w-5 h-5 border-t-4 border-l-4 border-white rounded-tl" />
+                    <div className="absolute -top-1 -right-1 w-5 h-5 border-t-4 border-r-4 border-white rounded-tr" />
+                    <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-4 border-l-4 border-white rounded-bl" />
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-4 border-r-4 border-white rounded-br" />
+
+                    {/* Animated scanning laser line */}
+                    {!qrDetected && (
+                      <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#f05537] to-transparent shadow-[0_0_8px_#f05537] animate-pulse top-1/2 -translate-y-1/2" />
+                    )}
                   </div>
                 </div>
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 px-3 py-1 rounded-full text-[11px] text-white font-medium">
-                  Align QR code inside frame
+
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md px-3.5 py-1 rounded-full text-[11px] text-white font-medium border border-white/10 flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  {qrDetected ? "QR Code Recognized!" : "Point camera at QR code"}
                 </div>
               </div>
             )}
@@ -422,7 +735,7 @@ function VerificationContent() {
               <button
                 type="submit"
                 disabled={scanning || !scanInput.trim()}
-                className="h-11 px-6 rounded-full bg-[#d1410c] text-xs font-semibold text-white transition hover:bg-[#b03507] disabled:opacity-50 shrink-0"
+                className="h-11 px-6 rounded-full bg-[#d1410c] text-xs font-semibold text-white transition hover:bg-[#b03507] disabled:opacity-50 shrink-0 cursor-pointer"
               >
                 {scanning ? "Verifying..." : "Verify & Admit"}
               </button>
@@ -453,7 +766,7 @@ function VerificationContent() {
                   <button
                     key={a.id}
                     onClick={() => handleSelect(a)}
-                    className="flex items-center gap-3 px-4 py-3 text-left transition hover:bg-[#202020]"
+                    className="flex items-center gap-3 px-4 py-3 text-left transition hover:bg-[#202020] cursor-pointer"
                   >
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#262626] text-xs font-semibold text-[#fafafa]">
                       {a.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
@@ -547,7 +860,7 @@ function VerificationContent() {
                   {!confirming ? (
                     <button
                       onClick={() => setConfirming(true)}
-                      className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#fafafa] text-xs font-semibold text-[#0a0a0a] transition hover:bg-white"
+                      className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#fafafa] text-xs font-semibold text-[#0a0a0a] transition hover:bg-white cursor-pointer"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
                       Validate & Grant Entry
@@ -557,14 +870,14 @@ function VerificationContent() {
                       <p className="mb-1 text-center text-xs font-medium text-[#9ca3af]">Confirm entry for <strong className="text-[#fafafa]">{selected.name}</strong>?</p>
                       <button
                         onClick={handleCheckInFromSelect}
-                        className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 text-xs font-semibold text-white transition hover:bg-emerald-600"
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 text-xs font-semibold text-white transition hover:bg-emerald-600 cursor-pointer"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
                         Yes, Grant Entry
                       </button>
                       <button
                         onClick={() => setConfirming(false)}
-                        className="flex h-10 w-full items-center justify-center rounded-full border border-[#262626] bg-[#171717] text-xs font-semibold text-[#9ca3af] transition hover:bg-[#202020] hover:text-[#fafafa]"
+                        className="flex h-10 w-full items-center justify-center rounded-full border border-[#262626] bg-[#171717] text-xs font-semibold text-[#9ca3af] transition hover:bg-[#202020] hover:text-[#fafafa] cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -581,7 +894,7 @@ function VerificationContent() {
 
               <button
                 onClick={handleReset}
-                className="mt-3 flex h-10 w-full items-center justify-center rounded-full border border-[#262626] bg-[#171717] text-xs font-semibold text-[#fafafa] transition hover:bg-[#202020] hover:border-[#374151]"
+                className="mt-3 flex h-10 w-full items-center justify-center rounded-full border border-[#262626] bg-[#171717] text-xs font-semibold text-[#fafafa] transition hover:bg-[#202020] hover:border-[#374151] cursor-pointer"
               >
                 Search Another Attendee
               </button>
