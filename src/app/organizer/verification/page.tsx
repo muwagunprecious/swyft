@@ -20,7 +20,7 @@ interface Attendee {
 }
 
 interface ScanAlert {
-  type: "success" | "void" | "unauthorized" | "error";
+  type: "success" | "void" | "unauthorized" | "event_ended" | "error";
   title: string;
   message: string;
   attendee?: Attendee;
@@ -211,7 +211,14 @@ function VerificationContent() {
       const status = err.response?.status;
       const errMsg = errRes?.message || "";
 
-      if (status === 400 && (errRes?.status === "used" || errMsg.includes("already been used"))) {
+      if (status === 400 && (errRes?.status === "event_ended" || errMsg.toLowerCase().includes("event ended") || errMsg.toLowerCase().includes("already passed"))) {
+        setScanAlert({
+          type: "event_ended",
+          title: "Event Ended",
+          message: errMsg || `This event has ended. Tickets can no longer be checked in.`,
+          attendee: errRes?.attendee,
+        });
+      } else if (status === 400 && (errRes?.status === "void" || errRes?.status === "used" || errMsg.includes("already been used") || errMsg.includes("VOID"))) {
         setScanAlert({
           type: "void",
           title: "VOID: This ticket has already been used",
@@ -544,7 +551,9 @@ function VerificationContent() {
       {scanAlert && (
         <div
           className={`rounded-2xl border p-5 flex items-start gap-4 animate-in fade-in transition-all ${
-            scanAlert.type === "void"
+            scanAlert.type === "event_ended"
+              ? "border-amber-600/60 bg-amber-950/40 text-amber-300"
+              : scanAlert.type === "void"
               ? "border-red-600/50 bg-red-950/40 text-red-300"
               : scanAlert.type === "unauthorized"
               ? "border-amber-600/50 bg-amber-950/40 text-amber-300"
@@ -555,7 +564,9 @@ function VerificationContent() {
         >
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold text-base ${
-              scanAlert.type === "void"
+              scanAlert.type === "event_ended"
+                ? "bg-amber-500/20 text-amber-400"
+                : scanAlert.type === "void"
                 ? "bg-red-500/20 text-red-400"
                 : scanAlert.type === "unauthorized"
                 ? "bg-amber-500/20 text-amber-400"
@@ -564,7 +575,7 @@ function VerificationContent() {
                 : "bg-gray-700 text-gray-300"
             }`}
           >
-            {scanAlert.type === "void" ? "⚠️" : scanAlert.type === "unauthorized" ? "🔒" : scanAlert.type === "success" ? "✓" : "✕"}
+            {scanAlert.type === "event_ended" ? "⏳" : scanAlert.type === "void" ? "⚠️" : scanAlert.type === "unauthorized" ? "🔒" : scanAlert.type === "success" ? "✓" : "✕"}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold uppercase tracking-wider">{scanAlert.title}</h3>

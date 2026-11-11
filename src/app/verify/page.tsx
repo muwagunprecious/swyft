@@ -27,7 +27,9 @@ interface AttendeeDetails {
 
 interface VerificationResponse {
   message: string;
-  status: "valid" | "used" | "invalid" | "unauthorized";
+  status: "valid" | "used" | "invalid" | "unauthorized" | "event_ended";
+  endedAt?: string;
+  endedDateFormatted?: string;
   attendee?: AttendeeDetails;
 }
 
@@ -44,11 +46,28 @@ function VerifyContent() {
   const [unauthorizedMessage, setUnauthorizedMessage] = useState<string | null>(null);
   const [recentScans, setRecentScans] = useState<AttendeeDetails[]>([]);
 
-  // Clean raw input (handles plain OTX code or full URLs like https://swyft-ticket.name.ng/verify?code=OTX-xxx)
+  // Clean raw input (handles plain OTX code, UUIDs, or full URLs like https://swyft-ticket.name.ng/verify?code=OTX-xxx)
   const extractCode = (str: string): string => {
     if (!str) return "";
-    const match = str.match(/(?:code=|^)(OTX-[a-zA-Z0-9-]+)/i);
-    return match ? match[1] : str.trim();
+    const trimmed = str.trim();
+
+    // 1. URL with ?code=...
+    const paramMatch = trimmed.match(/[?&]code=([a-zA-Z0-9-]+)/i);
+    if (paramMatch) return paramMatch[1];
+
+    // 2. URL path with /verify-ticket/... or /verify/...
+    const pathMatch = trimmed.match(/(?:\/verify-ticket\/|\/verify\/)([a-zA-Z0-9-]+)/i);
+    if (pathMatch) return pathMatch[1];
+
+    // 3. Raw OTX code
+    const otxMatch = trimmed.match(/(OTX-[a-zA-Z0-9-]+)/i);
+    if (otxMatch) return otxMatch[1];
+
+    // 4. Raw UUID format
+    const uuidMatch = trimmed.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    if (uuidMatch) return uuidMatch[1];
+
+    return trimmed;
   };
 
   const handleVerifyCode = useCallback(async (rawCode: string) => {
@@ -90,8 +109,18 @@ function VerifyContent() {
     } catch (err: any) {
       const errRes = err.response?.data;
       const status = err.response?.status;
+      const errMsg = errRes?.message || "";
 
-      if (status === 403 || errRes?.status === "unauthorized") {
+      if (status === 400 && (errRes?.status === "event_ended" || errMsg.toLowerCase().includes("event ended") || errMsg.toLowerCase().includes("already passed"))) {
+        setTicketResult({
+          message: errMsg || "Event ended",
+          status: "event_ended",
+          endedAt: errRes?.endedAt,
+          endedDateFormatted: errRes?.endedDateFormatted,
+          attendee: errRes?.attendee,
+        });
+        setShowModal(true);
+      } else if (status === 403 || errRes?.status === "unauthorized") {
         const msg = errRes?.message || "You are not authorized to scan this ticket";
         setUnauthorizedMessage(msg);
         setTicketResult({
@@ -99,9 +128,9 @@ function VerifyContent() {
           status: "unauthorized",
         });
         setShowModal(true);
-      } else if (status === 400 && (errRes?.status === "used" || errRes?.message?.includes("already been used"))) {
+      } else if (status === 400 && (errRes?.status === "void" || errRes?.status === "used" || errMsg.toLowerCase().includes("already been used") || errMsg.includes("VOID"))) {
         setTicketResult({
-          message: "This ticket has already been used",
+          message: "VOID: This ticket has already been used",
           status: "used",
           attendee: errRes?.attendee,
         });
@@ -151,18 +180,27 @@ function VerifyContent() {
       );
     } catch (err: any) {
       const errRes = err.response?.data;
-      if (err.response?.status === 403 || errRes?.status === "unauthorized") {
-        alert(errRes?.message || "You are not authorized to scan this ticket");
-      } else if (err.response?.status === 400 && (errRes?.status === "used" || errRes?.message?.includes("already been used"))) {
+      const errMsg = errRes?.message || "";
+      if (err.response?.status === 400 && (errRes?.status === "event_ended" || errMsg.toLowerCase().includes("event ended"))) {
         setTicketResult((prev) => prev ? {
           ...prev,
-          message: "This ticket has already been used",
+          message: errMsg,
+          status: "event_ended",
+          endedDateFormatted: errRes?.endedDateFormatted,
+        } : null);
+        alert(errMsg || "This event has already ended.");
+      } else if (err.response?.status === 403 || errRes?.status === "unauthorized") {
+        alert(errMsg || "You are not authorized to scan this ticket");
+      } else if (err.response?.status === 400 && (errRes?.status === "void" || errRes?.status === "used" || errMsg.toLowerCase().includes("already been used") || errMsg.includes("VOID"))) {
+        setTicketResult((prev) => prev ? {
+          ...prev,
+          message: "VOID: This ticket has already been used",
           status: "used",
           attendee: prev.attendee ? { ...prev.attendee, isUsed: true } : undefined,
         } : null);
-        alert(errRes?.message || "This ticket has already been used");
+        alert(errMsg || "VOID: This ticket has already been used");
       } else {
-        alert(errRes?.message || "Failed to check in attendee. Please try again.");
+        alert(errMsg || "Failed to check in attendee. Please try again.");
       }
     } finally {
       setAdmitting(false);
@@ -480,6 +518,28 @@ function VerifyContent() {
               </div>
             )}
 
+            {ticketResult?.status === "event_ended" && (
+              <div className="bg-amber-600 px-6 py-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-amber-600 font-black">
+                    ⏳
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider">Event Ended</h3>
+                    <p className="text-xs text-amber-100 font-medium">
+                      {ticketResult.message || "This event has ended"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-full p-1.5 text-amber-100 hover:bg-amber-700 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {ticketResult?.status === "invalid" && (
               <div className="bg-gray-800 px-6 py-4 text-white flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -502,7 +562,40 @@ function VerifyContent() {
 
             {/* Modal Body */}
             <div className="overflow-y-auto p-6 sm:p-7">
-              {ticketResult?.status === "unauthorized" ? (
+              {ticketResult?.status === "event_ended" ? (
+                <div className="py-6 text-center space-y-4">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">
+                    {ticketResult.message || "Event Ended"}
+                  </h3>
+                  <p className="text-xs text-gray-600 max-w-sm mx-auto leading-relaxed">
+                    This event has concluded and tickets can no longer be checked in.
+                  </p>
+                  {ticketResult.attendee && (
+                    <div className="mt-4 text-left rounded-2xl bg-amber-50/60 border border-amber-200/80 p-4 text-xs space-y-1.5">
+                      <p className="font-extrabold text-gray-900">{ticketResult.attendee.event}</p>
+                      <p className="text-gray-600">Attendee: <span className="font-semibold text-gray-800">{ticketResult.attendee.name}</span></p>
+                      <p className="text-gray-600">Tier: <span className="font-semibold text-gray-800">{ticketResult.attendee.ticketType || ticketResult.attendee.type}</span></p>
+                      {ticketResult.endedDateFormatted && (
+                        <p className="text-amber-800 font-bold mt-1">Concluded: {ticketResult.endedDateFormatted}</p>
+                      )}
+                    </div>
+                  )}
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="w-full rounded-xl bg-gray-900 py-3 text-xs font-bold text-white transition hover:bg-black"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ) : ticketResult?.status === "unauthorized" ? (
                 <div className="py-6 text-center space-y-4">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
