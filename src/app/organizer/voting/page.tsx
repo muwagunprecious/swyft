@@ -29,7 +29,56 @@ export default function VotingEngine() {
   // UI Flow States
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedEvent = events.find(e => e.id === selectedEventId);
+
+  const publicVotingUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/voting/${selectedEvent?.slug || selectedEvent?.id || selectedEventId}`
+    : `https://swyft-ticket.name.ng/voting/${selectedEvent?.slug || selectedEvent?.id || selectedEventId}`;
+
+  const handleCopyLink = () => {
+    if (!publicVotingUrl) return;
+    navigator.clipboard.writeText(publicVotingUrl);
+    setCopied(true);
+    triggerToast("Voting link copied to clipboard!", "success");
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = `Vote for your favorite contestant in ${selectedEvent?.title || 'this event'} on Swyft! Cast your vote here: ${publicVotingUrl}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleShareTwitter = () => {
+    const text = `Vote for your favorite candidate in ${selectedEvent?.title || 'this event'}! #SwyftVoting`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(publicVotingUrl)}`, '_blank');
+  };
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!window.confirm(`Are you sure you want to delete category "${categoryName}"? All its contestants and votes will be permanently deleted.`)) return;
+    try {
+      await api.delete(`/organizer/categories/${categoryId}`);
+      triggerToast(`Category "${categoryName}" deleted successfully!`, "success");
+      fetchVotingResults();
+    } catch (err: any) {
+      console.error('Error deleting category', err);
+      triggerToast(err.response?.data?.message || 'Failed to delete category.', "error");
+    }
+  };
+
+  const handleDeleteContestant = async (contestantId: string, contestantName: string) => {
+    if (!window.confirm(`Are you sure you want to remove contestant "${contestantName}"?`)) return;
+    try {
+      await api.delete(`/organizer/contestants/${contestantId}`);
+      triggerToast(`Contestant "${contestantName}" removed successfully!`, "success");
+      fetchVotingResults();
+    } catch (err: any) {
+      console.error('Error deleting contestant', err);
+      triggerToast(err.response?.data?.message || 'Failed to remove contestant.', "error");
+    }
+  };
 
   // Success toast state
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
@@ -138,7 +187,6 @@ export default function VotingEngine() {
   // Update categories and state variables when selected event changes
   useEffect(() => {
     if (selectedEventId) {
-      const selectedEvent = events.find(e => e.id === selectedEventId);
       if (selectedEvent) {
         setIsVotingEnabled(selectedEvent.isVotingEnabled || false);
         setIsVotingPaid(selectedEvent.isVotingPaid || false);
@@ -181,8 +229,6 @@ export default function VotingEngine() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const selectedEvent = events.find(e => e.id === selectedEventId);
 
   const toggleVoting = () => {
     setIsVotingEnabled(!isVotingEnabled);
@@ -485,6 +531,82 @@ export default function VotingEngine() {
               </span>
             </button>
           </div>
+          {/* ── SHAREABLE VOTING LINK CARD ───────────────────────────── */}
+          <div className="bg-gradient-to-r from-[#171717] via-[#141414] to-[#121212] p-6 md:p-7 rounded-2xl border border-emerald-800/30 shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2.5 py-0.5 rounded-full">
+                    Public Voting Link
+                  </span>
+                  <span className="text-xs text-[#737373]">•</span>
+                  <span className="text-xs text-[#9ca3af]">
+                    {isVotingPaid ? `Paid Voting (${formatNaira(voteCost)} / vote)` : 'Free Public Voting'}
+                  </span>
+                </div>
+
+                <h3 className="text-lg md:text-xl font-bold text-[#fafafa] tracking-tight">
+                  Share Live Voting Link
+                </h3>
+                <p className="text-xs text-[#9ca3af] max-w-xl leading-relaxed">
+                  Share this dedicated link with attendees, contestants, and voters across WhatsApp, Instagram, and social channels.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 px-3.5 py-2 bg-[#0a0a0a] border border-[#262626] rounded-xl text-xs font-mono text-emerald-400 max-w-full overflow-hidden">
+                    <span className="text-[#737373]">🔗</span>
+                    <span className="truncate select-all">{publicVotingUrl}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Action & Share Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  onClick={handleCopyLink}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer ${
+                    copied
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-[#fafafa] text-[#0a0a0a] hover:bg-white active:scale-95'
+                  }`}
+                >
+                  <span>{copied ? '✓' : '📋'}</span>
+                  <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
+                </button>
+
+                <a
+                  href={publicVotingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-xl bg-[#1f1f1f] hover:bg-[#282828] border border-[#333333] text-xs font-bold text-[#fafafa] transition-all flex items-center gap-1.5 active:scale-95"
+                >
+                  <span>Live Ballot</span>
+                  <span>↗</span>
+                </a>
+
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="px-3.5 py-2.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 text-xs font-bold text-[#25D366] transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  title="Share to WhatsApp"
+                >
+                  <span>💬</span>
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </button>
+
+                <button
+                  onClick={handleShareTwitter}
+                  className="px-3.5 py-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-xs font-bold text-sky-400 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  title="Share on X / Twitter"
+                >
+                  <span>𝕏</span>
+                  <span className="hidden sm:inline">Post</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* ── VOTING MANAGEMENT DASHBOARD ───────────────────────────── */}
           {isVotingEnabled && (
@@ -607,15 +729,24 @@ export default function VotingEngine() {
                             </p>
                           </div>
                           
-                          <button
-                            onClick={() => {
-                              setContestantForm((prev) => ({ ...prev, category: category.name }));
-                              setIsDrawerOpen(true);
-                            }}
-                            className="text-xs font-semibold text-[#fafafa] hover:underline flex items-center gap-1"
-                          >
-                            <span>+</span> Add Contestant
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setContestantForm((prev) => ({ ...prev, category: category.name }));
+                                setIsDrawerOpen(true);
+                              }}
+                              className="text-xs font-semibold text-[#fafafa] hover:underline flex items-center gap-1"
+                            >
+                              <span>+</span> Add Contestant
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(category.id, category.name)}
+                              className="p-1.5 rounded-lg bg-[#121212] hover:bg-rose-950/50 border border-[#262626] hover:border-rose-900/40 text-xs text-[#737373] hover:text-rose-400 transition active:scale-95"
+                              title="Delete Category"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </div>
 
                         {/* Contestant listing under category */}
@@ -688,6 +819,13 @@ export default function VotingEngine() {
                                         Adjust
                                       </button>
                                     </div>
+                                    <button
+                                      onClick={() => handleDeleteContestant(c.id, c.name)}
+                                      className="p-2 rounded-full bg-[#121212] hover:bg-rose-950/50 border border-[#262626] hover:border-rose-900/40 text-xs text-[#737373] hover:text-rose-400 transition active:scale-95"
+                                      title="Remove Contestant"
+                                    >
+                                      🗑️
+                                    </button>
                                   </div>
                                 </div>
                               );
