@@ -17,20 +17,48 @@ export default function VotingEngine() {
   // Voting settings state
   const [isVotingEnabled, setIsVotingEnabled] = useState(false);
   const [isVotingPaid, setIsVotingPaid] = useState(false);
-  const [voteCost, setVoteCost] = useState(50);
+  const [voteCost, setVoteCost] = useState(100);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Real-time categories & contestant stats
+  // Categories & contestants
   const [categories, setCategories] = useState<any[]>([]);
   const [customTweakCounts, setCustomTweakCounts] = useState<Record<string, string>>({});
-  const [activityLogs, setActivityLogs] = useState<any[]>([]);
 
   // UI Flow States
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Simple Pop-up Modal States
+  const [isContestantModalOpen, setIsContestantModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isCreatingInlineCategory, setIsCreatingInlineCategory] = useState(false);
+
+  // Contestant Form State
+  const [contestantName, setContestantName] = useState('');
+  const [contestantCategory, setContestantCategory] = useState('');
+  const [contestantNote, setContestantNote] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [isSavingContestant, setIsSavingContestant] = useState(false);
+  const [contestantError, setContestantError] = useState('');
+
+  // Category Form State
+  const [categoryNameInput, setCategoryNameInput] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
+
+  // Toast feedback state
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
+  const triggerToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+  };
 
   const selectedEvent = events.find(e => e.id === selectedEventId);
 
@@ -47,76 +75,176 @@ export default function VotingEngine() {
   };
 
   const handleShareWhatsApp = () => {
-    const text = `Vote for your favorite contestant in ${selectedEvent?.title || 'this event'} on Swyft! Cast your vote here: ${publicVotingUrl}`;
+    const text = `Vote for your favorite candidate in ${selectedEvent?.title || 'this event'}! Cast your vote here: ${publicVotingUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleShareTwitter = () => {
-    const text = `Vote for your favorite candidate in ${selectedEvent?.title || 'this event'}! #SwyftVoting`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(publicVotingUrl)}`, '_blank');
+    const text = `Vote for your favorite candidate in ${selectedEvent?.title || 'this event'}! ${publicVotingUrl}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-    if (!window.confirm(`Are you sure you want to delete category "${categoryName}"? All its contestants and votes will be permanently deleted.`)) return;
+  // Fetch organizer events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await api.get('/organizer/events');
+        setEvents(res.data || []);
+        if (res.data?.length > 0) {
+          setSelectedEventId(res.data[0].id);
+          setIsVotingEnabled(res.data[0].isVotingEnabled || false);
+          setIsVotingPaid(res.data[0].isVotingPaid || false);
+          setVoteCost(res.data[0].voteCost || 100);
+        }
+      } catch (err) {
+        console.error('Failed to fetch events', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  // Fetch voting results
+  const fetchVotingResults = async () => {
+    if (!selectedEventId) return;
+    setLoadingVoting(true);
     try {
-      await api.delete(`/organizer/categories/${categoryId}`);
-      triggerToast(`Category "${categoryName}" deleted successfully!`, "success");
-      fetchVotingResults();
-    } catch (err: any) {
-      console.error('Error deleting category', err);
-      triggerToast(err.response?.data?.message || 'Failed to delete category.', "error");
+      const res = await api.get(`/votes/results/${selectedEventId}`);
+      setCategories(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch voting results', err);
+    } finally {
+      setLoadingVoting(false);
     }
   };
 
-  const handleDeleteContestant = async (contestantId: string, contestantName: string) => {
-    if (!window.confirm(`Are you sure you want to remove contestant "${contestantName}"?`)) return;
+  useEffect(() => {
+    if (selectedEventId) {
+      const ev = events.find(e => e.id === selectedEventId);
+      if (ev) {
+        setIsVotingEnabled(ev.isVotingEnabled || false);
+        setIsVotingPaid(ev.isVotingPaid || false);
+        setVoteCost(ev.voteCost || 100);
+      }
+      fetchVotingResults();
+    }
+  }, [selectedEventId, events]);
+
+  // Click outside listener for dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Save Voting Rules & Pricing
+  const handleSaveSettings = async () => {
+    if (!selectedEventId) return;
+    setIsSaving(true);
     try {
-      await api.delete(`/organizer/contestants/${contestantId}`);
-      triggerToast(`Contestant "${contestantName}" removed successfully!`, "success");
+      await api.put(`/organizer/events/${selectedEventId}/voting-settings`, {
+        isVotingEnabled,
+        isVotingPaid,
+        voteCost: Number(voteCost)
+      });
+      setEvents(prev => prev.map(e => e.id === selectedEventId ? {
+        ...e, isVotingEnabled, isVotingPaid, voteCost: Number(voteCost)
+      } : e));
+      triggerToast("Voting settings saved successfully!", "success");
       fetchVotingResults();
     } catch (err: any) {
-      console.error('Error deleting contestant', err);
-      triggerToast(err.response?.data?.message || 'Failed to remove contestant.', "error");
+      triggerToast(err.response?.data?.message || 'Failed to save settings', "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Success toast state
-  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
-    show: false,
-    message: "",
-    type: "success",
-  });
-
-  const triggerToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+  // Image upload
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setContestantError('');
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setContestantError('Image is too large. Please choose a photo under 5MB.');
+        return;
+      }
+      setImagePreview(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  // Add Contestant Form state
-  const [contestantForm, setContestantForm] = useState({
-    name: '',
-    nickname: '',
-    faculty: '',
-    department: '',
-    level: '',
-    bio: '',
-    instagram: '',
-    category: ''
-  });
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [isSavingContestant, setIsSavingContestant] = useState(false);
-  const [contestantError, setContestantError] = useState('');
+  // Save Contestant
+  const handleSaveContestant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContestantError('');
+    if (!selectedEventId) return;
 
-  // Add Category Modal state
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [categoryNameInput, setCategoryNameInput] = useState('');
-  const [isSavingCategory, setIsSavingCategory] = useState(false);
-  const [categoryError, setCategoryError] = useState('');
+    if (!contestantName.trim()) {
+      setContestantError('Please enter the contestant\'s name.');
+      return;
+    }
 
-  // Select Category for Contestant Selection state
-  const [isSelectCategoryModalOpen, setIsSelectCategoryModalOpen] = useState(false);
+    if (!contestantCategory.trim()) {
+      setContestantError('Please choose or enter a category.');
+      return;
+    }
 
+    setIsSavingContestant(true);
+    try {
+      await api.post('/organizer/contestants', {
+        name: contestantName.trim(),
+        category: contestantCategory.trim(),
+        department: contestantNote.trim() || undefined,
+        eventId: selectedEventId,
+        image: imageBase64 || '/images/party.png',
+      });
+
+      triggerToast(`Contestant "${contestantName}" added successfully!`, "success");
+      setContestantName('');
+      setContestantCategory('');
+      setContestantNote('');
+      setImagePreview(null);
+      setImageBase64(null);
+      setIsContestantModalOpen(false);
+      setIsCreatingInlineCategory(false);
+      fetchVotingResults();
+    } catch (err: any) {
+      setContestantError(err.response?.data?.message || 'Failed to add contestant. Try again.');
+    } finally {
+      setIsSavingContestant(false);
+    }
+  };
+
+  // Open Contestant Modal with optional pre-filled category
+  const openAddContestantModal = (presetCategory?: string) => {
+    setContestantError('');
+    setContestantName('');
+    setContestantNote('');
+    setImagePreview(null);
+    setImageBase64(null);
+    if (presetCategory) {
+      setContestantCategory(presetCategory);
+      setIsCreatingInlineCategory(false);
+    } else if (categories.length > 0) {
+      setContestantCategory(categories[0].name);
+      setIsCreatingInlineCategory(false);
+    } else {
+      setContestantCategory('');
+      setIsCreatingInlineCategory(true);
+    }
+    setIsContestantModalOpen(true);
+  };
+
+  // Save Category
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     setCategoryError('');
@@ -133,234 +261,57 @@ export default function VotingEngine() {
         eventId: selectedEventId,
         name: categoryNameInput.trim()
       });
-
       triggerToast(`Category "${categoryNameInput}" created successfully!`, "success");
       setCategoryNameInput('');
       setIsCategoryModalOpen(false);
-
-      // Refresh list
       fetchVotingResults();
     } catch (err: any) {
-      console.error('Error adding category', err);
-      setCategoryError(err.response?.data?.message || 'Failed to create category. Try again.');
+      setCategoryError(err.response?.data?.message || 'Failed to create category.');
     } finally {
       setIsSavingCategory(false);
     }
   };
 
-
-  // Fetch all organizer events
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await api.get('/organizer/events');
-        setEvents(res.data);
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0].id);
-          setIsVotingEnabled(res.data[0].isVotingEnabled || false);
-          setIsVotingPaid(res.data[0].isVotingPaid || false);
-          setVoteCost(res.data[0].voteCost || 50);
-        }
-      } catch (err) {
-        console.error('Failed to fetch events', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEvents();
-  }, []);
-
-  // Fetch live voting tallies
-  const fetchVotingResults = async () => {
-    if (!selectedEventId) return;
-    setLoadingVoting(true);
+  // Delete Category
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!window.confirm(`Are you sure you want to delete category "${categoryName}"? All its contestants will be removed.`)) return;
     try {
-      const res = await api.get(`/votes/results/${selectedEventId}`);
-      setCategories(res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch voting results', err);
-    } finally {
-      setLoadingVoting(false);
-    }
-  };
-
-  // Update categories and state variables when selected event changes
-  useEffect(() => {
-    if (selectedEventId) {
-      if (selectedEvent) {
-        setIsVotingEnabled(selectedEvent.isVotingEnabled || false);
-        setIsVotingPaid(selectedEvent.isVotingPaid || false);
-        setVoteCost(selectedEvent.voteCost || 50);
-      }
-      fetchVotingResults();
-    }
-  }, [selectedEventId, events]);
-
-  // Extract activity feed logs from categories.votes database records
-  useEffect(() => {
-    if (categories.length > 0) {
-      const allVotes: any[] = [];
-      categories.forEach((cat: any) => {
-        const catVotes = cat.votes || [];
-        catVotes.forEach((v: any) => {
-          const contestant = (cat.contestants || []).find((c: any) => c.id === v.contestantId);
-          allVotes.push({
-            ...v,
-            contestantName: contestant?.name || 'Candidate',
-            categoryName: cat.name
-          });
-        });
-      });
-      // Sort by date descending
-      allVotes.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setActivityLogs(allVotes.slice(0, 10)); // Take last 10
-    } else {
-      setActivityLogs([]);
-    }
-  }, [categories]);
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleVoting = () => {
-    setIsVotingEnabled(!isVotingEnabled);
-  };
-
-  const handleSaveSettings = async () => {
-    if (!selectedEventId) return;
-    setIsSaving(true);
-    setSaveSuccess(false);
-    try {
-      await api.put(`/organizer/events/${selectedEventId}/voting-settings`, {
-        isVotingEnabled,
-        isVotingPaid,
-        voteCost: Number(voteCost)
-      });
-      
-      setEvents(prev => prev.map(e => e.id === selectedEventId ? {
-        ...e, isVotingEnabled, isVotingPaid, voteCost: Number(voteCost)
-      } : e));
-      
-      setSaveSuccess(true);
-      triggerToast("Voting settings updated successfully!", "success");
-      setTimeout(() => setSaveSuccess(false), 3000);
+      await api.delete(`/organizer/categories/${categoryId}`);
+      triggerToast(`Category "${categoryName}" deleted.`, "success");
       fetchVotingResults();
     } catch (err: any) {
-      console.error('Failed to update settings', err);
-      triggerToast(err.response?.data?.message || 'Failed to update settings', "error");
-    } finally {
-      setIsSaving(false);
+      triggerToast(err.response?.data?.message || 'Failed to delete category.', "error");
     }
   };
 
-  // Cast vote tweaks
+  // Delete Contestant
+  const handleDeleteContestant = async (contestantId: string, name: string) => {
+    if (!window.confirm(`Remove contestant "${name}"?`)) return;
+    try {
+      await api.delete(`/organizer/contestants/${contestantId}`);
+      triggerToast(`Contestant "${name}" removed.`, "success");
+      fetchVotingResults();
+    } catch (err: any) {
+      triggerToast(err.response?.data?.message || 'Failed to remove contestant.', "error");
+    }
+  };
+
+  // Tweak votes
   const handleTweakVotesCast = async (contestantId: string, categoryId: string, amount: number) => {
     try {
       await api.post(`/votes/tweak/${contestantId}`, {
         categoryId,
         tweakCount: amount
       });
-      triggerToast(`Adjusted votes by ${amount > 0 ? '+' : ''}${amount}`, "success");
+      triggerToast(`Updated votes by ${amount > 0 ? '+' : ''}${amount}`, "success");
       fetchVotingResults();
     } catch (err: any) {
       triggerToast(err.response?.data?.message || 'Failed to adjust votes.', "error");
     }
   };
 
-  const handleCustomTweakSubmit = (contestantId: string, categoryId: string) => {
-    const rawVal = customTweakCounts[contestantId] || '';
-    const num = parseInt(rawVal);
-    if (isNaN(num) || num === 0) {
-      triggerToast('Please enter a valid non-zero adjustment count.', "error");
-      return;
-    }
-    handleTweakVotesCast(contestantId, categoryId, num);
-    setCustomTweakCounts(prev => ({ ...prev, [contestantId]: '' }));
-  };
-
-  // Image Upload handler for Add Contestant Drawer
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setContestantError('');
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setContestantError('Image size should be less than 5MB.');
-        return;
-      }
-      
-      const url = URL.createObjectURL(file);
-      setImagePreview(url);
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageBase64(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Save new contestant via inline drawer
-  const handleSaveContestant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setContestantError('');
-    if (!selectedEventId) return;
-    
-    if (!contestantForm.name || !contestantForm.category) {
-      setContestantError('Contestant name and category are required.');
-      return;
-    }
-
-    setIsSavingContestant(true);
-    try {
-      await api.post('/organizer/contestants', {
-        ...contestantForm,
-        eventId: selectedEventId,
-        image: imageBase64
-      });
-
-      triggerToast(`Contestant "${contestantForm.name}" added successfully!`, "success");
-      
-      // Reset form & close drawer
-      setContestantForm({
-        name: '',
-        nickname: '',
-        faculty: '',
-        department: '',
-        level: '',
-        bio: '',
-        instagram: '',
-        category: ''
-      });
-      setImagePreview(null);
-      setImageBase64(null);
-      setIsDrawerOpen(false);
-
-      // Refresh list
-      fetchVotingResults();
-    } catch (err: any) {
-      console.error('Error adding contestant', err);
-      setContestantError(err.response?.data?.message || 'Failed to add contestant. Try again.');
-    } finally {
-      setIsSavingContestant(false);
-    }
-  };
-
-  // Totals calculations
   const totalVotesCast = categories.reduce(
     (sum, cat) => sum + (cat.contestants || []).reduce((s: number, c: any) => s + (c.totalVotesCount || 0), 0), 
-    0
-  );
-
-  const totalRealVotes = categories.reduce(
-    (sum, cat) => sum + (cat.contestants || []).reduce((s: number, c: any) => s + (c.realVotesCount || 0), 0), 
     0
   );
 
@@ -369,17 +320,13 @@ export default function VotingEngine() {
     0
   );
 
-  const votingRevenue = isVotingPaid ? totalRealVotes * voteCost : 0;
-
   return (
-    <div className="space-y-6 pt-2">
-      {/* Toast Feedback Notification */}
+    <div className="space-y-6 pt-2 pb-16 max-w-6xl mx-auto">
+      {/* Toast Notification */}
       {toast.show && (
-        <div className="fixed top-6 right-6 z-[100] flex items-center gap-3 rounded-full border border-[#262626] bg-[#121212]/95 backdrop-blur-md px-5 py-3 shadow-2xl animate-in fade-in slide-in-from-top-2">
-          <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold border ${
-            toast.type === "success" 
-              ? "bg-emerald-950/60 border-emerald-800/40 text-emerald-400" 
-              : "bg-rose-950/60 border-rose-800/40 text-rose-400"
+        <div className="fixed top-6 right-6 z-[120] flex items-center gap-3 rounded-2xl border border-[#333333] bg-[#121212]/95 backdrop-blur-md px-5 py-3.5 shadow-2xl animate-in fade-in slide-in-from-top-2">
+          <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+            toast.type === "success" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
           }`}>
             {toast.type === "success" ? "✓" : "!"}
           </span>
@@ -387,38 +334,37 @@ export default function VotingEngine() {
         </div>
       )}
 
-      {/* ── HEADER & EVENT SELECTOR ───────────────────────────────── */}
-      <div className="bg-[#121212] p-6 md:p-8 rounded-2xl border border-[#262626] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-30">
-        <div className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-[#9ca3af] bg-[#171717] border border-[#262626] px-2.5 py-1 rounded-full">
-            Operations Module
-          </span>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#fafafa] tracking-tight mt-2">
-            Voting & Contests
+      {/* ── TOP HEADER & CAMPAIGN SELECTOR ───────────────────────────── */}
+      <div className="bg-[#121212] p-5 sm:p-7 rounded-3xl border border-[#262626] flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1a1a1a] border border-[#2e2e2e] text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">
+            🗳️ Voting Section
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#fafafa] tracking-tight">
+            Event Voting & Contests
           </h1>
-          <p className="text-xs text-[#9ca3af]">
-            Configure live ballot categories, register candidates, and monitor real-time votes.
+          <p className="text-xs text-[#a1a1aa] mt-1">
+            Create categories, upload contestants with photos, set vote prices, and share your link.
           </p>
         </div>
-        
-        {/* Custom Dropdown Selector */}
-        <div className="w-full sm:w-80 relative z-20" ref={dropdownRef}>
-          <label className="text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1 block">
-            Active Campaign
+
+        {/* Event Dropdown */}
+        <div className="w-full sm:w-72 relative" ref={dropdownRef}>
+          <label className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider mb-1 block">
+            Select Event
           </label>
-          
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full px-4 py-2.5 bg-[#171717] hover:bg-[#202020] border border-[#262626] hover:border-[#374151] rounded-full text-xs font-semibold text-[#fafafa] outline-none flex items-center justify-between transition-all cursor-pointer shadow-sm select-none"
+            className="w-full px-4 py-3 bg-[#18181b] hover:bg-[#202023] border border-[#2e2e2e] rounded-2xl text-xs font-bold text-[#fafafa] outline-none flex items-center justify-between transition cursor-pointer"
           >
             <span className="truncate">
               {selectedEvent ? selectedEvent.title : 'Loading events...'}
             </span>
-            <span className="text-[#737373] text-[10px] ml-2">▼</span>
+            <span className="text-[#71717a] text-xs ml-2">▼</span>
           </button>
 
           {isDropdownOpen && events.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-[#121212] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden z-50 py-1 divide-y divide-[#262626]">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-[#18181b] border border-[#2e2e2e] rounded-2xl shadow-2xl overflow-hidden z-50 py-1 divide-y divide-[#27272a]">
               {events.map((e) => (
                 <button
                   key={e.id}
@@ -426,16 +372,13 @@ export default function VotingEngine() {
                     setSelectedEventId(e.id);
                     setIsDropdownOpen(false);
                   }}
-                  className={`w-full text-left px-4 py-3 text-xs font-medium transition-all hover:bg-[#1a1a1a] flex items-center gap-3 ${
-                    e.id === selectedEventId ? "bg-[#171717] text-[#fafafa]" : "text-[#9ca3af]"
+                  className={`w-full text-left px-4 py-3 text-xs font-semibold transition hover:bg-[#27272a] flex items-center gap-3 ${
+                    e.id === selectedEventId ? "bg-emerald-500/10 text-emerald-400" : "text-[#d4d4d8]"
                   }`}
                 >
-                  {e.bannerImage && (
-                    <img src={e.bannerImage} className="h-6 w-10 object-cover rounded bg-[#171717] shrink-0 border border-[#262626]" alt="" />
-                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-[#fafafa]">{e.title}</p>
-                    <p className="text-[10px] text-[#737373] truncate mt-0.5">{e.location} • {new Date(e.date).toLocaleDateString()}</p>
+                    <p className="truncate font-bold">{e.title}</p>
+                    <p className="text-[10px] text-[#71717a] truncate">{e.location}</p>
                   </div>
                 </button>
               ))}
@@ -446,843 +389,539 @@ export default function VotingEngine() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-20 gap-3">
-          <div className="w-8 h-8 border-2 border-[#262626] border-t-[#fafafa] rounded-full animate-spin"></div>
-          <span className="text-xs text-[#737373] tracking-wide">Synchronizing ballot records...</span>
+          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs text-[#a1a1aa]">Loading voting details...</span>
         </div>
       ) : selectedEvent ? (
         <>
-          {/* ── SELECTED EVENT BANNER ───────────────────────────────── */}
-          <div className="relative min-h-[220px] md:h-56 w-full rounded-2xl bg-[#121212] overflow-hidden border border-[#262626] flex flex-col justify-between p-6 md:p-8">
-            <img 
-              src={selectedEvent.bannerImage || '/images/party.png'} 
-              alt={selectedEvent.title} 
-              className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-transparent pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium border border-emerald-800/40 bg-emerald-950/40 text-emerald-400">
-                  SELECTED EVENT
-                </span>
-                <span className="text-xs font-medium text-[#9ca3af]">
-                  {selectedEvent.category || 'Campaign'}
-                </span>
+          {/* ── 1. PROMINENT SHAREABLE VOTING LINK CARD ──────────────── */}
+          <div className="bg-gradient-to-br from-[#14231a] via-[#121212] to-[#121212] p-6 sm:p-7 rounded-3xl border border-emerald-600/40 shadow-xl relative overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-3 py-0.5 rounded-full">
+                    {isVotingEnabled ? '● Live Voting Active' : '○ Voting Paused'}
+                  </span>
+                  <span className="text-xs font-semibold text-[#a1a1aa]">
+                    • {isVotingPaid ? `₦${voteCost.toLocaleString()} per vote` : 'Free Voting'}
+                  </span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-black text-[#fafafa] tracking-tight">
+                  Public Voting Link for Voters
+                </h2>
+                <p className="text-xs text-[#a1a1aa] max-w-xl leading-relaxed">
+                  Share this link directly on WhatsApp, Instagram, or social media. Anyone who clicks can see all candidates and vote immediately.
+                </p>
+
+                {/* Direct Link Box */}
+                <div className="flex items-center gap-2 p-2.5 bg-[#09090b] border border-[#27272a] rounded-2xl text-xs font-mono text-emerald-400 max-w-xl overflow-hidden">
+                  <span className="text-base ml-1">🔗</span>
+                  <span className="truncate select-all flex-1 text-[11px] sm:text-xs">{publicVotingUrl}</span>
+                </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button
-                  onClick={() => setIsCategoryModalOpen(true)}
-                  className="rounded-full border border-[#262626] bg-[#171717]/80 backdrop-blur-sm text-[#fafafa] hover:bg-[#202020] hover:border-[#374151] px-4 py-2 text-xs font-semibold transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>+</span> Add Category
-                </button>
-                <button
-                  onClick={() => setIsSelectCategoryModalOpen(true)}
-                  className="rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white px-4 py-2 text-xs font-semibold transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>+</span> Add Contestant
-                </button>
-              </div>
-            </div>
-            
-            <div className="relative z-10 space-y-1.5 mt-4 sm:mt-0">
-              <div className="space-y-0.5">
-                <h3 className="text-xl md:text-2xl font-bold text-[#fafafa] tracking-tight uppercase">{selectedEvent.title}</h3>
-                <p className="text-xs text-[#9ca3af]">
-                  📍 {selectedEvent.location} • 📅 {new Date(selectedEvent.date).toLocaleDateString()}
-                </p>
-              </div>
-              
-              <p className="text-xs text-[#737373] max-w-2xl line-clamp-2">
-                {selectedEvent.description}
-              </p>
-            </div>
-          </div>
-
-          {/* ── VOTING CAMPAIGN TOGGLE ─────────────────────────────────── */}
-          <div className="p-6 md:p-8 rounded-2xl bg-[#121212] border border-[#262626] transition-all flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h3 className="text-lg md:text-xl font-bold tracking-tight text-[#fafafa] flex items-center gap-3">
-                {isVotingEnabled && (
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </span>
-                )}
-                {isVotingEnabled ? 'Voting Campaign is ACTIVE' : 'Voting System is Inactive'}
-              </h3>
-              <p className="text-xs text-[#9ca3af] mt-1.5 max-w-2xl leading-relaxed">
-                {isVotingEnabled 
-                  ? 'Contestants are live. Attendees can buy and cast votes on the event lobby. Turn settings off below to freeze standings.'
-                  : 'Turn on the voting switch to create categories, add contestants, and launch the campaign live for attendees.'}
-              </p>
-            </div>
-            
-            {/* Custom Switch */}
-            <button 
-              onClick={toggleVoting}
-              className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${isVotingEnabled ? 'bg-emerald-500' : 'bg-[#262626]'}`}
-            >
-              <span className="sr-only">Toggle voting</span>
-              <span className={`pointer-events-none relative inline-block h-7 w-7 transform rounded-full bg-white shadow transition duration-300 ease-in-out flex items-center justify-center text-[10px] ${isVotingEnabled ? 'translate-x-6 text-emerald-600' : 'translate-x-0 text-gray-400'}`}>
-                {isVotingEnabled ? "✓" : "✕"}
-              </span>
-            </button>
-          </div>
-          {/* ── SHAREABLE VOTING LINK CARD ───────────────────────────── */}
-          <div className="bg-gradient-to-r from-[#171717] via-[#141414] to-[#121212] p-6 md:p-7 rounded-2xl border border-emerald-800/30 shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2.5 py-0.5 rounded-full">
-                    Public Voting Link
-                  </span>
-                  <span className="text-xs text-[#737373]">•</span>
-                  <span className="text-xs text-[#9ca3af]">
-                    {isVotingPaid ? `Paid Voting (${formatNaira(voteCost)} / vote)` : 'Free Public Voting'}
-                  </span>
-                </div>
-
-                <h3 className="text-lg md:text-xl font-bold text-[#fafafa] tracking-tight">
-                  Share Live Voting Link
-                </h3>
-                <p className="text-xs text-[#9ca3af] max-w-xl leading-relaxed">
-                  Share this dedicated link with attendees, contestants, and voters across WhatsApp, Instagram, and social channels.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <div className="flex items-center gap-2 px-3.5 py-2 bg-[#0a0a0a] border border-[#262626] rounded-xl text-xs font-mono text-emerald-400 max-w-full overflow-hidden">
-                    <span className="text-[#737373]">🔗</span>
-                    <span className="truncate select-all">{publicVotingUrl}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Action & Share Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
                 <button
                   onClick={handleCopyLink}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer ${
+                  className={`px-5 py-3 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 shadow-lg cursor-pointer ${
                     copied
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-[#fafafa] text-[#0a0a0a] hover:bg-white active:scale-95'
+                      ? 'bg-emerald-400 text-[#09090b]'
+                      : 'bg-emerald-500 hover:bg-emerald-400 text-[#09090b] active:scale-95'
                   }`}
                 >
-                  <span>{copied ? '✓' : '📋'}</span>
-                  <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
+                  <span className="text-sm">{copied ? '✓' : '📋'}</span>
+                  <span>{copied ? 'Copied to Clipboard!' : 'Copy Voting Link'}</span>
+                </button>
+
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="px-4 py-3 rounded-2xl bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/40 text-xs font-extrabold text-[#25D366] transition flex items-center gap-2 active:scale-95 cursor-pointer"
+                >
+                  <span className="text-sm">💬</span>
+                  <span>WhatsApp</span>
                 </button>
 
                 <a
                   href={publicVotingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-[#1f1f1f] hover:bg-[#282828] border border-[#333333] text-xs font-bold text-[#fafafa] transition-all flex items-center gap-1.5 active:scale-95"
+                  className="px-4 py-3 rounded-2xl bg-[#27272a] hover:bg-[#323236] border border-[#3f3f46] text-xs font-extrabold text-[#fafafa] transition flex items-center gap-1.5 active:scale-95"
                 >
-                  <span>Live Ballot</span>
+                  <span>Preview Page</span>
                   <span>↗</span>
                 </a>
-
-                <button
-                  onClick={handleShareWhatsApp}
-                  className="px-3.5 py-2.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 text-xs font-bold text-[#25D366] transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  title="Share to WhatsApp"
-                >
-                  <span>💬</span>
-                  <span className="hidden sm:inline">WhatsApp</span>
-                </button>
-
-                <button
-                  onClick={handleShareTwitter}
-                  className="px-3.5 py-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-xs font-bold text-sky-400 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  title="Share on X / Twitter"
-                >
-                  <span>𝕏</span>
-                  <span className="hidden sm:inline">Post</span>
-                </button>
               </div>
             </div>
           </div>
 
-          {/* ── VOTING MANAGEMENT DASHBOARD ───────────────────────────── */}
-          {isVotingEnabled && (
-            <div className="space-y-6">
-              
-              {/* Metric KPI cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { label: 'Total Votes Cast', value: totalVotesCast.toLocaleString(), sub: 'Organic & tweaks combined', icon: '🗳️' },
-                  { label: 'Real Voting Revenue', value: formatNaira(votingRevenue), sub: `Generated from ${totalRealVotes.toLocaleString()} paid votes`, icon: '💰' },
-                  { label: 'Active Candidates', value: activeContestantsCount.toLocaleString(), sub: `Registered in ${categories.length} categories`, icon: '👥' },
-                ].map((s, i) => (
-                  <div key={i} className="bg-[#121212] p-5 rounded-2xl border border-[#262626] hover:border-[#374151] transition-all flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-[#9ca3af]">{s.label}</p>
-                      <p className="text-2xl font-bold text-[#fafafa] tracking-tight mt-1">{s.value}</p>
-                      <p className="text-[11px] text-[#737373] mt-0.5">{s.sub}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-full border border-[#262626] bg-[#171717] flex items-center justify-center text-base">
-                      {s.icon}
-                    </div>
-                  </div>
-                ))}
+          {/* ── 2. SIMPLE RULES & PRICING SETUP ───────────────────────── */}
+          <div className="bg-[#121212] p-6 rounded-3xl border border-[#262626] space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#262626] pb-4">
+              <div>
+                <h3 className="text-base font-bold text-[#fafafa]">Voting Rules & Price Per Vote</h3>
+                <p className="text-xs text-[#a1a1aa] mt-0.5">Choose whether voters pay to vote and how much each vote costs</p>
               </div>
 
-              {/* Central Grid Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                
-                {/* Left Columns (Contestants & Visual SVG Graphs) */}
-                <div className="lg:col-span-2 space-y-6">
-                  
-                  {/* Visual Standing Share Charts Widget */}
-                  {categories.length > 0 && (
-                    <div className="bg-[#121212] rounded-2xl border border-[#262626] p-6 md:p-8 space-y-6">
-                      <div>
-                        <h3 className="text-base font-bold text-[#fafafa] tracking-tight">Standings Share Analytics</h3>
-                        <p className="text-xs text-[#9ca3af] mt-0.5">Voter weight distribution per candidate (real vs tweaked counts)</p>
-                      </div>
+              {/* Voting Active Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsVotingEnabled(!isVotingEnabled)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 cursor-pointer border ${
+                  isVotingEnabled
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                    : 'bg-rose-500/20 border-rose-500/50 text-rose-400'
+                }`}
+              >
+                <span>{isVotingEnabled ? '● Voting is OPEN' : '○ Voting is CLOSED'}</span>
+              </button>
+            </div>
 
-                      <div className="space-y-4">
-                        {categories.map((category) => {
-                          const categoryTotal = (category.contestants || []).reduce(
-                            (sum: number, c: any) => sum + (c.totalVotesCount || 0),
-                            0
-                          );
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
+              {/* Free vs Paid Toggle */}
+              <div>
+                <label className="block text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-2">
+                  Voting Mode
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1.5 bg-[#18181b] border border-[#27272a] rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setIsVotingPaid(false)}
+                    className={`py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      !isVotingPaid
+                        ? 'bg-[#27272a] text-white shadow-sm'
+                        : 'text-[#71717a] hover:text-[#fafafa]'
+                    }`}
+                  >
+                    <span>🟢</span> Free Voting
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsVotingPaid(true)}
+                    className={`py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      isVotingPaid
+                        ? 'bg-emerald-500 text-[#09090b] shadow-sm'
+                        : 'text-[#71717a] hover:text-[#fafafa]'
+                    }`}
+                  >
+                    <span>💰</span> Paid Voting
+                  </button>
+                </div>
+              </div>
 
-                          return (
-                            <div key={category.id} className="p-4 rounded-xl bg-[#171717] border border-[#262626] space-y-3">
-                              <div className="flex justify-between items-center border-b border-[#262626] pb-2">
-                                <span className="text-xs font-bold text-[#fafafa] uppercase tracking-wider">{category.name}</span>
-                                <span className="text-[10px] font-mono text-[#9ca3af]">{categoryTotal.toLocaleString()} total votes</span>
-                              </div>
-                              
-                              <div className="space-y-2.5">
-                                {(category.contestants || []).map((contestant: any) => {
-                                  const sharePct = categoryTotal > 0 ? Math.round((contestant.totalVotesCount / categoryTotal) * 100) : 0;
-                                  
-                                  return (
-                                    <div key={contestant.id} className="space-y-1 text-xs">
-                                      <div className="flex justify-between items-center text-[#fafafa]">
-                                        <span className="truncate max-w-[60%] font-medium">{contestant.name}</span>
-                                        <span className="font-mono text-[#9ca3af] text-[10px]">
-                                          {contestant.totalVotesCount.toLocaleString()} votes ({sharePct}%)
-                                        </span>
-                                      </div>
-
-                                      {/* Dual stack bar */}
-                                      <div className="h-2 w-full rounded-full bg-[#262626] overflow-hidden flex relative">
-                                        {contestant.totalVotesCount > 0 ? (
-                                          <>
-                                            <div className="h-full bg-emerald-500" style={{ width: `${(contestant.realVotesCount / categoryTotal) * 100}%` }} />
-                                            <div className="h-full bg-amber-400" style={{ width: `${(contestant.tweakedVotesCount / categoryTotal) * 100}%` }} />
-                                          </>
-                                        ) : (
-                                          <div className="h-full w-full bg-[#262626]" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Category Section Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#121212] p-6 rounded-2xl border border-[#262626]">
-                    <div>
-                      <h3 className="text-base font-bold text-[#fafafa] tracking-tight">Campaign Categories</h3>
-                      <p className="text-xs text-[#9ca3af]">Manage voting categories and register contestants</p>
-                    </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                      <button
-                        onClick={() => setIsCategoryModalOpen(true)}
-                        className="rounded-full border border-[#262626] bg-[#171717] text-[#fafafa] hover:bg-[#202020] hover:border-[#374151] px-4 py-2 text-xs font-semibold transition active:scale-95 cursor-pointer"
-                      >
-                        <span>+</span> Add Category
-                      </button>
-                      <button
-                        onClick={() => setIsSelectCategoryModalOpen(true)}
-                        className="rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white px-4 py-2 text-xs font-semibold transition active:scale-95 cursor-pointer"
-                      >
-                        <span>+</span> Add Contestant
-                      </button>
-                    </div>
+              {/* Amount Per Vote */}
+              <div>
+                <label className="block text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-2">
+                  Amount To Pay Per Vote (₦)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#71717a]">₦</span>
+                    <input
+                      type="number"
+                      min="10"
+                      step="10"
+                      value={voteCost}
+                      disabled={!isVotingPaid}
+                      onChange={(e) => setVoteCost(Math.max(0, Number(e.target.value)))}
+                      className="w-full pl-9 pr-4 py-2.5 bg-[#18181b] border border-[#2e2e2e] rounded-2xl text-sm font-bold text-[#fafafa] outline-none focus:border-emerald-500 transition disabled:opacity-40"
+                    />
                   </div>
 
-                  {/* Contestant Management Cards List */}
-                  {categories.length > 0 ? (
-                    categories.map((category) => (
-                      <div key={category.id} className="bg-[#121212] rounded-2xl border border-[#262626] overflow-hidden">
-                        <div className="p-5 border-b border-[#262626] bg-[#171717]/50 flex items-center justify-between">
+                  {/* Preset Pills */}
+                  {isVotingPaid && (
+                    <div className="flex items-center gap-1.5">
+                      {[50, 100, 200, 500].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setVoteCost(amt)}
+                          className={`px-2.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                            voteCost === amt
+                              ? 'bg-emerald-500 text-[#09090b] border-emerald-500'
+                              : 'bg-[#18181b] text-[#a1a1aa] border-[#2e2e2e] hover:border-[#3f3f46]'
+                          }`}
+                        >
+                          ₦{amt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#09090b] font-bold text-xs transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-500/10 flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <div className="h-4 w-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                ) : (
+                  "✓ Save Settings"
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* ── 3. CANDIDATES & CATEGORIES MANAGEMENT ─────────────────── */}
+          <div className="space-y-5">
+            {/* Action Bar */}
+            <div className="bg-[#121212] p-5 sm:p-6 rounded-3xl border border-[#262626] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-[#fafafa]">Contest Categories & People</h3>
+                <p className="text-xs text-[#a1a1aa]">
+                  {categories.length} {categories.length === 1 ? 'Category' : 'Categories'} • {activeContestantsCount} Total Contestants • {totalVotesCast.toLocaleString()} Votes Cast
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="px-4 py-2.5 rounded-2xl bg-[#1f1f23] hover:bg-[#28282e] border border-[#2e2e2e] text-xs font-bold text-[#fafafa] transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>+</span> Add Category
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openAddContestantModal()}
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#09090b] text-xs font-extrabold transition active:scale-95 cursor-pointer shadow-lg shadow-emerald-500/10 flex items-center gap-1.5"
+                >
+                  <span className="text-sm">+</span> Add Contestant
+                </button>
+              </div>
+            </div>
+
+            {/* Categories List */}
+            {categories.length > 0 ? (
+              <div className="space-y-6">
+                {categories.map((cat) => {
+                  const contestants = cat.contestants || [];
+                  const catVotes = contestants.reduce((acc: number, c: any) => acc + (c.totalVotesCount || 0), 0);
+
+                  return (
+                    <div key={cat.id} className="bg-[#121212] rounded-3xl border border-[#262626] overflow-hidden">
+                      {/* Category Header */}
+                      <div className="p-5 sm:p-6 bg-[#18181b]/80 border-b border-[#27272a] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">🏆</span>
                           <div>
-                            <h3 className="text-sm font-bold text-[#fafafa]">{category.name}</h3>
-                            <p className="text-[10px] font-mono text-[#737373] mt-0.5">
-                              ID: {category.id}
+                            <h4 className="text-base font-extrabold text-[#fafafa]">{cat.name}</h4>
+                            <p className="text-xs text-[#71717a]">
+                              {contestants.length} {contestants.length === 1 ? 'contestant' : 'contestants'} • {catVotes.toLocaleString()} votes cast
                             </p>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setContestantForm((prev) => ({ ...prev, category: category.name }));
-                                setIsDrawerOpen(true);
-                              }}
-                              className="text-xs font-semibold text-[#fafafa] hover:underline flex items-center gap-1"
-                            >
-                              <span>+</span> Add Contestant
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCategory(category.id, category.name)}
-                              className="p-1.5 rounded-lg bg-[#121212] hover:bg-rose-950/50 border border-[#262626] hover:border-rose-900/40 text-xs text-[#737373] hover:text-rose-400 transition active:scale-95"
-                              title="Delete Category"
-                            >
-                              🗑️
-                            </button>
                           </div>
                         </div>
 
-                        {/* Contestant listing under category */}
-                        <div className="p-6 divide-y divide-[#262626] space-y-4">
-                          {(category.contestants && category.contestants.length > 0) ? (
-                            category.contestants.map((c: any) => {
-                              return (
-                                <div key={c.id} className="py-4 first:pt-0 last:pb-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                                    <img src={c.image || '/images/party.png'} className="h-12 w-12 object-cover rounded-xl border border-[#262626] bg-[#171717] shrink-0" alt="" />
-                                    <div className="min-w-0 flex-1">
-                                      <h4 className="text-sm font-bold text-[#fafafa] truncate">{c.name}</h4>
-                                      
-                                      {/* Audit standings */}
-                                      <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px]">
-                                        <span className="text-[#9ca3af]">
-                                          Total: <strong className="text-[#fafafa]">{c.totalVotesCount}</strong>
-                                        </span>
-                                        <span className="text-[#737373]">•</span>
-                                        <span className="rounded-full px-2 py-0.5 text-[9px] font-medium border border-emerald-800/40 bg-emerald-950/40 text-emerald-400">
-                                          Real: <strong>{c.realVotesCount}</strong>
-                                        </span>
-                                        <span className="text-[#737373]">•</span>
-                                        <span className="rounded-full px-2 py-0.5 text-[9px] font-medium border border-amber-800/40 bg-amber-950/40 text-amber-400">
-                                          Tweaked: <strong>{c.tweakedVotesCount}</strong>
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => openAddContestantModal(cat.name)}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                          >
+                            <span>+</span> Add Person
+                          </button>
 
-                                  {/* TWEAK INTERACTION BUTTONS */}
-                                  <div className="flex flex-wrap items-center gap-2 shrink-0 justify-start md:justify-end">
-                                    {/* Quick Increment capsules */}
-                                    <div className="flex items-center gap-1 border border-[#262626] rounded-full p-1 bg-[#171717]">
-                                      <button
-                                        onClick={() => handleTweakVotesCast(c.id, category.id, 5)}
-                                        className="px-2.5 py-1 bg-[#121212] hover:bg-[#202020] border border-[#262626] hover:border-[#374151] rounded-full text-[10px] font-semibold text-[#fafafa] active:scale-95 transition"
-                                      >
-                                        +5
-                                      </button>
-                                      <button
-                                        onClick={() => handleTweakVotesCast(c.id, category.id, 25)}
-                                        className="px-2.5 py-1 bg-[#121212] hover:bg-[#202020] border border-[#262626] hover:border-[#374151] rounded-full text-[10px] font-semibold text-[#fafafa] active:scale-95 transition"
-                                      >
-                                        +25
-                                      </button>
-                                      {c.tweakedVotesCount >= 5 && (
-                                        <button
-                                          onClick={() => handleTweakVotesCast(c.id, category.id, -5)}
-                                          className="px-2.5 py-1 bg-[#121212] hover:bg-rose-950/50 border border-rose-900/40 rounded-full text-[10px] font-semibold text-rose-400 active:scale-95 transition"
-                                        >
-                                          -5
-                                        </button>
-                                      )}
-                                    </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                            className="p-2 rounded-xl bg-[#27272a] hover:bg-rose-950/40 border border-[#3f3f46] hover:border-rose-800 text-xs text-[#a1a1aa] hover:text-rose-400 transition cursor-pointer"
+                            title="Delete this category"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
 
-                                    {/* Direct adjustment input block */}
-                                    <div className="flex items-center gap-1.5">
-                                      <input
-                                        type="number"
-                                        placeholder="Count"
-                                        value={customTweakCounts[c.id] || ''}
-                                        onChange={(e) => setCustomTweakCounts(prev => ({ ...prev, [c.id]: e.target.value }))}
-                                        className="w-20 px-3 py-1 bg-[#171717] border border-[#262626] focus:border-[#fafafa] rounded-full text-xs font-medium text-[#fafafa] outline-none placeholder-[#737373]"
-                                      />
-                                      <button
-                                        onClick={() => handleCustomTweakSubmit(c.id, category.id)}
-                                        className="px-3 py-1 bg-[#fafafa] text-[#0a0a0a] hover:bg-white text-xs font-semibold rounded-full transition active:scale-95"
-                                      >
-                                        Adjust
-                                      </button>
-                                    </div>
+                      {/* Contestants Cards Grid */}
+                      <div className="p-5 sm:p-6">
+                        {contestants.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {contestants.map((c: any) => (
+                              <div
+                                key={c.id}
+                                className="bg-[#18181b] border border-[#27272a] rounded-2xl overflow-hidden hover:border-[#3f3f46] transition group flex flex-col justify-between"
+                              >
+                                <div>
+                                  {/* Photo */}
+                                  <div className="relative h-44 w-full bg-[#09090b] overflow-hidden">
+                                    <img
+                                      src={c.image || '/images/party.png'}
+                                      alt={c.name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                                    
+                                    {/* Delete Button overlay */}
                                     <button
+                                      type="button"
                                       onClick={() => handleDeleteContestant(c.id, c.name)}
-                                      className="p-2 rounded-full bg-[#121212] hover:bg-rose-950/50 border border-[#262626] hover:border-rose-900/40 text-xs text-[#737373] hover:text-rose-400 transition active:scale-95"
-                                      title="Remove Contestant"
+                                      className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-black/70 hover:bg-rose-950/90 border border-white/10 hover:border-rose-500 text-xs text-white/80 hover:text-rose-400 transition cursor-pointer shadow-md"
+                                      title="Remove contestant"
                                     >
                                       🗑️
                                     </button>
+
+                                    <div className="absolute bottom-2.5 left-3 right-3 text-white">
+                                      <h5 className="text-sm font-black truncate">{c.name}</h5>
+                                      {c.details && (
+                                        <p className="text-[11px] text-zinc-300 truncate opacity-90">
+                                          {typeof c.details === 'string' ? JSON.parse(c.details)?.department || '' : c.details?.department || ''}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Stats */}
+                                  <div className="p-3.5 space-y-2">
+                                    <div className="flex items-center justify-between text-xs font-bold">
+                                      <span className="text-[#a1a1aa]">Total Votes</span>
+                                      <span className="text-emerald-400 font-mono text-sm">
+                                        🗳️ {c.totalVotesCount || 0}
+                                      </span>
+                                    </div>
+
+                                    {/* Quick Admin Tweak (discrete) */}
+                                    <div className="flex items-center justify-between pt-2 border-t border-[#27272a] text-[10px]">
+                                      <span className="text-[#71717a]">Add Votes:</span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTweakVotesCast(c.id, cat.id, 5)}
+                                          className="px-2 py-0.5 rounded-lg bg-[#27272a] hover:bg-[#323236] text-[#d4d4d8] font-bold"
+                                        >
+                                          +5
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTweakVotesCast(c.id, cat.id, 25)}
+                                          className="px-2 py-0.5 rounded-lg bg-[#27272a] hover:bg-[#323236] text-[#d4d4d8] font-bold"
+                                        >
+                                          +25
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              );
-                            })
-                          ) : (
-                            <div className="py-8 text-center text-xs text-[#737373]">
-                              No contestants registered in this category yet.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="bg-[#121212] rounded-2xl border border-[#262626] p-12 text-center space-y-4">
-                      <div className="w-12 h-12 rounded-full bg-[#171717] border border-[#262626] flex items-center justify-center text-xl mx-auto">
-                        📁
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-[#fafafa]">No Categories Configured</p>
-                        <p className="text-xs text-[#9ca3af] max-w-sm mx-auto">
-                          Create at least one category before registering contestants.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setIsCategoryModalOpen(true)}
-                        className="rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white px-5 py-2 text-xs font-semibold transition active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <span>+</span> Create First Category
-                      </button>
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Right Columns (Vote Settings & Feed) */}
-                <div className="space-y-6 h-fit sticky top-24">
-                  
-                  {/* Vote Settings card */}
-                  <div className="bg-[#121212] rounded-2xl border border-[#262626] p-6 flex flex-col gap-5">
-                    <div className="border-b border-[#262626] pb-4">
-                      <h3 className="text-base font-bold text-[#fafafa]">
-                        Rules Settings
-                      </h3>
-                      <p className="text-[10px] text-[#737373] uppercase tracking-wider mt-0.5">Configure ballot parameters</p>
-                    </div>
-                    
-                    <div className="flex flex-col gap-4">
-                      
-                      {/* Paid switch */}
-                      <div className="flex items-center justify-between p-4 bg-[#171717] rounded-xl border border-[#262626]">
-                        <div>
-                          <p className="text-xs font-semibold text-[#fafafa]">Paid Voting</p>
-                          <p className="text-[10px] text-[#737373] mt-0.5">Require transaction to vote</p>
-                        </div>
-                        <button 
-                          onClick={() => setIsVotingPaid(!isVotingPaid)}
-                          className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${isVotingPaid ? 'bg-emerald-500' : 'bg-[#262626]'}`}
-                        >
-                          <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition duration-300 ease-in-out ${isVotingPaid ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
-                      </div>
-
-                      {/* Vote cost input */}
-                      <div className={`transition-all duration-300 ${isVotingPaid ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                        <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Cost Per Vote (₦)</label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#737373] font-semibold text-xs">₦</span>
-                          <input 
-                            type="number" 
-                            value={voteCost}
-                            onChange={(e) => setVoteCost(Number(e.target.value))}
-                            disabled={!isVotingPaid}
-                            className="w-full pl-8 pr-4 py-2 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Live rankings switch */}
-                      <div className="flex items-center justify-between p-4 bg-[#171717] rounded-xl border border-[#262626]">
-                        <div>
-                          <p className="text-xs font-semibold text-[#fafafa]">Live Standings</p>
-                          <p className="text-[10px] text-[#737373] mt-0.5">Allow public to view leaders</p>
-                        </div>
-                        <button 
-                          className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-300 ease-in-out focus:outline-none bg-emerald-500"
-                        >
-                          <span className="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition duration-300 ease-in-out translate-x-5" />
-                        </button>
-                      </div>
-
-                    </div>
-                    
-                    <button 
-                      onClick={handleSaveSettings}
-                      disabled={isSaving}
-                      className="w-full rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white py-2.5 font-semibold text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      {isSaving ? (
-                        <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
-                      ) : (
-                        "Save Settings"
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Real-time audit activity feed logs */}
-                  <div className="bg-[#121212] rounded-2xl border border-[#262626] p-6 flex flex-col gap-4">
-                    <div className="border-b border-[#262626] pb-3">
-                      <h3 className="text-sm font-bold text-[#fafafa]">Recent Votes Activity</h3>
-                      <p className="text-[10px] text-[#737373] uppercase tracking-wider mt-0.5">Real-time audit log</p>
-                    </div>
-
-                    <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-                      {activityLogs.length > 0 ? (
-                        activityLogs.map((log, idx) => (
-                          <div key={log.id || idx} className="p-3 rounded-xl bg-[#171717] border border-[#262626] text-xs space-y-1">
-                            <div className="flex justify-between items-center">
-                              <span className={`text-[8px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                                log.isTweaked 
-                                  ? "bg-amber-950/40 text-amber-400 border-amber-800/40" 
-                                  : "bg-emerald-950/40 text-emerald-400 border-emerald-800/40"
-                              }`}>
-                                {log.isTweaked ? "Tweaked" : "Organic"}
-                              </span>
-                              <span className="text-[9px] font-mono text-[#737373]">
-                                {new Date(log.createdAt).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            
-                            <p className="text-[#fafafa] text-[11px]">
-                              Vote registered for <strong className="font-bold text-white">{log.contestantName}</strong> ({log.categoryName})
-                            </p>
-                            <p className="text-[9.5px] font-mono text-[#737373] truncate">
-                              Voter: {log.email}
-                            </p>
+                              </div>
+                            ))}
                           </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-[#737373] text-xs">No active votes logged yet.</div>
-                      )}
+                        ) : (
+                          <div className="text-center py-10 space-y-3">
+                            <div className="text-3xl">👥</div>
+                            <p className="text-xs text-[#a1a1aa]">No contestants added to this category yet.</p>
+                            <button
+                              type="button"
+                              onClick={() => openAddContestantModal(cat.name)}
+                              className="px-4 py-2 rounded-xl bg-emerald-500 text-[#09090b] text-xs font-bold hover:bg-emerald-400 transition"
+                            >
+                              + Add First Contestant
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                </div>
-
+                  );
+                })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="bg-[#121212] rounded-3xl border border-[#262626] p-12 text-center space-y-4">
+                <div className="text-4xl">📁</div>
+                <div>
+                  <h4 className="text-base font-bold text-[#fafafa]">No Categories Created Yet</h4>
+                  <p className="text-xs text-[#a1a1aa] max-w-sm mx-auto mt-1">
+                    Start by creating your first category (like "Best Dressed Male" or "Campus King").
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="px-5 py-2.5 rounded-2xl bg-emerald-500 text-[#09090b] text-xs font-bold hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/10 cursor-pointer"
+                  >
+                    + Create Category
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAddContestantModal()}
+                    className="px-5 py-2.5 rounded-2xl bg-[#1f1f23] text-[#fafafa] text-xs font-bold hover:bg-[#28282e] border border-[#2e2e2e] transition cursor-pointer"
+                  >
+                    + Add Contestant Directly
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </>
       ) : (
-        <div className="bg-[#121212] rounded-2xl border border-[#262626] p-16 text-center text-[#737373] text-xs">
+        <div className="bg-[#121212] rounded-3xl border border-[#262626] p-16 text-center text-[#71717a] text-xs">
           No events found. You need an event before you can enable voting.
         </div>
       )}
 
-      {/* ── CONTESTANT CREATION SLIDE-OUT DRAWER ─────────────────────── */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="absolute inset-0" onClick={() => setIsDrawerOpen(false)} />
-          
-          <div className="relative w-full max-w-4xl h-full border-l border-[#262626] bg-[#0d0d0d] p-6 md:p-8 shadow-2xl flex flex-col justify-between overflow-y-auto z-10">
-            
-            <div className="space-y-6">
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between border-b border-[#262626] pb-4">
-                <div>
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-[#9ca3af] bg-[#171717] border border-[#262626] px-2.5 py-1 rounded-full">
-                    Contestant Registration
-                  </span>
-                  <h3 className="text-lg font-bold text-[#fafafa] mt-2">Register New Candidate</h3>
-                </div>
-                <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="h-8 w-8 rounded-full border border-[#262626] bg-[#171717] flex items-center justify-center text-[#9ca3af] hover:text-[#fafafa] transition-all cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {contestantError && (
-                <div className="bg-rose-950/50 border border-rose-800/40 text-rose-400 p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <span>⚠️</span> {contestantError}
-                </div>
-              )}
-
-              {/* Side-by-Side: Preview & Form */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                
-                {/* Left side: Live Card Preview */}
-                <div className="space-y-3">
-                  <h4 className="text-[10px] font-medium text-[#737373] uppercase tracking-wider">Candidate Card Preview</h4>
-                  
-                  <div className="bg-[#121212] rounded-2xl border border-[#262626] overflow-hidden flex flex-col relative max-w-sm mx-auto shadow-sm">
-                    {/* Header Image */}
-                    <div className="relative h-56 bg-[#171717] w-full overflow-hidden shrink-0">
-                      {imagePreview ? (
-                        <img 
-                          src={imagePreview} 
-                          alt="Candidate preview" 
-                          className="absolute inset-0 w-full h-full object-cover" 
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-[#737373] gap-2">
-                          <span className="text-2xl">📷</span>
-                          <span className="text-[10px] font-medium uppercase tracking-wider">No Photo Uploaded</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
-                      
-                      <div className="absolute top-3 left-3 bg-[#fafafa] text-[#0a0a0a] text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                        👑 Rank #1
-                      </div>
-                      
-                      <div className="absolute bottom-3 right-3 bg-[#171717]/80 backdrop-blur-md border border-[#262626] px-2.5 py-0.5 rounded-full text-[9px] font-semibold text-[#fafafa] uppercase tracking-wider">
-                        {contestantForm.category || 'Category Label'}
-                      </div>
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="p-5 space-y-3">
-                      <div>
-                        <h3 className="text-base font-bold text-[#fafafa]">
-                          {contestantForm.name || 'Full Name'}
-                          {contestantForm.nickname && (
-                            <span className="text-[#9ca3af] font-medium text-xs ml-1.5 italic">
-                              "{contestantForm.nickname}"
-                            </span>
-                          )}
-                        </h3>
-                        
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {(contestantForm.department || 'Department') && (
-                            <span className="text-[9px] font-medium text-[#9ca3af] bg-[#171717] border border-[#262626] px-2 py-0.5 rounded-full uppercase">
-                              {contestantForm.department || 'Department'}
-                            </span>
-                          )}
-                          {contestantForm.level && (
-                            <span className="text-[9px] font-medium text-[#9ca3af] bg-[#171717] border border-[#262626] px-2 py-0.5 rounded-full uppercase">
-                              {contestantForm.level}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-[#9ca3af] bg-[#171717] border border-[#262626] p-3 rounded-xl min-h-[50px] line-clamp-3">
-                        "{contestantForm.bio || 'Brief manifesto or candidate pitch.'}"
-                      </p>
-
-                      {contestantForm.instagram && (
-                        <p className="text-[10px] text-pink-400 font-semibold">
-                          📷 @{contestantForm.instagram.replace('@', '')}
-                        </p>
-                      )}
-
-                      <div className="pt-2 border-t border-[#262626] flex items-center justify-between text-[10px] text-[#737373]">
-                        <span>Total Votes: 0</span>
-                        <span className="rounded-full bg-[#171717] border border-[#262626] text-[#fafafa] px-3 py-1 font-semibold">Cast Vote</span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Right side: Form controls */}
-                <form onSubmit={handleSaveContestant} className="space-y-4">
-                  {/* Photo upload */}
-                  <div className="p-4 bg-[#121212] border border-[#262626] rounded-2xl flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-[#fafafa]">Contestant Photo</p>
-                      <p className="text-[10px] text-[#737373] mt-0.5">JPG, PNG up to 5MB.</p>
-                    </div>
-                    <label className="rounded-full border border-[#262626] bg-[#171717] hover:bg-[#202020] hover:border-[#374151] px-4 py-2 text-[10px] font-semibold uppercase text-[#fafafa] cursor-pointer active:scale-95 transition">
-                      Choose file
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleImageChange}
-                        className="hidden" 
-                      />
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Full Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Teniola Adeyemi" 
-                        value={contestantForm.name}
-                        onChange={(e) => setContestantForm({...contestantForm, name: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373]"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Stage / Nickname</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Teni" 
-                        value={contestantForm.nickname}
-                        onChange={(e) => setContestantForm({...contestantForm, nickname: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Faculty</label>
-                      <input 
-                        type="text" 
-                        placeholder="Science" 
-                        value={contestantForm.faculty}
-                        onChange={(e) => setContestantForm({...contestantForm, faculty: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Department</label>
-                      <input 
-                        type="text" 
-                        placeholder="Computer Sci" 
-                        value={contestantForm.department}
-                        onChange={(e) => setContestantForm({...contestantForm, department: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Level</label>
-                      <select 
-                        value={contestantForm.level}
-                        onChange={(e) => setContestantForm({...contestantForm, level: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition cursor-pointer"
-                      >
-                        <option value="">Select</option>
-                        <option value="100L">100L</option>
-                        <option value="200L">200L</option>
-                        <option value="300L">300L</option>
-                        <option value="400L">400L</option>
-                        <option value="500L">500L</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Campaign Category</label>
-                    <select 
-                      value={contestantForm.category}
-                      onChange={(e) => setContestantForm({...contestantForm, category: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition cursor-pointer"
-                      required
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.name}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                    {categories.length === 0 && (
-                      <p className="text-[10px] text-rose-400 font-medium mt-1.5">
-                        ⚠️ Create a category first before adding contestants.
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Instagram Username</label>
-                    <input 
-                      type="text" 
-                      placeholder="username" 
-                      value={contestantForm.instagram}
-                      onChange={(e) => setContestantForm({...contestantForm, instagram: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-medium text-[#737373] uppercase tracking-wider mb-1.5">Manifesto / Short Bio</label>
-                    <textarea 
-                      rows={3} 
-                      placeholder="Candidate pitch / bio..." 
-                      value={contestantForm.bio}
-                      onChange={(e) => setContestantForm({...contestantForm, bio: e.target.value})}
-                      className="w-full px-4 py-3 bg-[#171717] border border-[#262626] rounded-2xl text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373] resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSavingContestant}
-                    className="w-full rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white py-3 font-semibold text-xs transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {isSavingContestant ? (
-                      <div className="h-4 w-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
-                    ) : (
-                      "Save Contestant"
-                    )}
-                  </button>
-
-                </form>
-
-              </div>
-
-            </div>
-
-            <div className="pt-6 border-t border-[#262626] text-center text-[10px] font-mono text-[#737373]">
-              Swyft Creator Studio • Real-time Operations
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ── CATEGORY CREATION MODAL ─────────────────────────────────── */}
-      {isCategoryModalOpen && (
+      {/* ── SIMPLE POP-UP MODAL: ADD CONTESTANT ──────────────────────── */}
+      {isContestantModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-3xl bg-[#121212] border border-[#262626] p-6 shadow-2xl space-y-5">
-            <div className="text-center space-y-1.5">
-              <span className="text-2xl">🗳️</span>
-              <h3 className="text-base font-bold text-[#fafafa]">Create New Category</h3>
-              <p className="text-xs text-[#9ca3af]">
-                Setup a new ballot category for this event.
-              </p>
+          <div className="w-full max-w-md rounded-3xl bg-[#121212] border border-[#262626] p-6 sm:p-7 shadow-2xl space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+              <div>
+                <h3 className="text-lg font-black text-[#fafafa]">Add Contestant</h3>
+                <p className="text-xs text-[#a1a1aa]">Add a person people can vote for</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsContestantModalOpen(false);
+                  setContestantError('');
+                }}
+                className="h-8 w-8 rounded-full border border-[#2e2e2e] bg-[#18181b] flex items-center justify-center text-[#a1a1aa] hover:text-[#fafafa] transition"
+              >
+                ✕
+              </button>
             </div>
 
-            {categoryError && (
-              <div className="bg-rose-950/50 border border-rose-800/40 text-rose-400 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
-                <span>⚠️</span> {categoryError}
+            {contestantError && (
+              <div className="bg-rose-950/50 border border-rose-800/40 text-rose-400 p-3 rounded-2xl text-xs font-semibold">
+                ⚠️ {contestantError}
               </div>
             )}
 
-            <form onSubmit={handleSaveCategory} className="space-y-4">
-              <div className="space-y-1 text-left">
-                <label className="text-[10px] font-medium uppercase text-[#737373] tracking-wider">Category Name</label>
+            <form onSubmit={handleSaveContestant} className="space-y-4">
+              {/* Photo Area */}
+              <div>
+                <label className="block text-xs font-bold text-[#fafafa] mb-1.5">
+                  Contestant Photo *
+                </label>
+                <label className="group relative flex flex-col items-center justify-center h-44 w-full rounded-2xl border-2 border-dashed border-[#333333] hover:border-emerald-500 bg-[#18181b] hover:bg-[#202024] transition cursor-pointer overflow-hidden">
+                  {imagePreview ? (
+                    <>
+                      <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-white transition">
+                        📷 Tap to change photo
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-center p-4">
+                      <div className="w-12 h-12 rounded-full bg-[#27272a] flex items-center justify-center text-2xl">
+                        📷
+                      </div>
+                      <p className="text-xs font-bold text-[#fafafa]">Tap here to select photo</p>
+                      <p className="text-[11px] text-[#71717a]">Choose from your phone or laptop</p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-bold text-[#fafafa] mb-1.5">
+                  Contestant Name *
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Prom King, SUG President"
-                  value={categoryNameInput}
-                  onChange={(e) => setCategoryNameInput(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#171717] border border-[#262626] rounded-full text-xs font-medium text-[#fafafa] outline-none focus:border-[#fafafa] transition placeholder-[#737373]"
+                  placeholder="e.g. Precious or DJ Steeze"
+                  value={contestantName}
+                  onChange={(e) => setContestantName(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#18181b] border border-[#2e2e2e] rounded-xl text-sm font-semibold text-[#fafafa] outline-none focus:border-emerald-500 transition placeholder-[#71717a]"
                   required
                 />
               </div>
 
+              {/* Category */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-[#fafafa]">
+                    Category *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingInlineCategory(!isCreatingInlineCategory)}
+                    className="text-xs text-emerald-400 hover:underline font-bold"
+                  >
+                    {isCreatingInlineCategory ? '← Pick existing category' : '+ New Category'}
+                  </button>
+                </div>
+
+                {isCreatingInlineCategory || categories.length === 0 ? (
+                  <input
+                    type="text"
+                    placeholder="e.g. Best Dressed Male, King of Night"
+                    value={contestantCategory}
+                    onChange={(e) => setContestantCategory(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#18181b] border border-[#2e2e2e] rounded-xl text-sm font-semibold text-[#fafafa] outline-none focus:border-emerald-500 transition placeholder-[#71717a]"
+                    required
+                  />
+                ) : (
+                  <select
+                    value={contestantCategory}
+                    onChange={(e) => setContestantCategory(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#18181b] border border-[#2e2e2e] rounded-xl text-sm font-semibold text-[#fafafa] outline-none focus:border-emerald-500 transition cursor-pointer"
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Note / Tag (Optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-[#a1a1aa] mb-1.5">
+                  Short Note or Department <span className="text-[#71717a] font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mass Comm, 400L, Table 5"
+                  value={contestantNote}
+                  onChange={(e) => setContestantNote(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#18181b] border border-[#2e2e2e] rounded-xl text-xs font-medium text-[#fafafa] outline-none focus:border-emerald-500 transition placeholder-[#71717a]"
+                />
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSavingCategory}
-                className="w-full h-10 rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white text-xs font-semibold transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                disabled={isSavingContestant}
+                className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#09090b] font-black text-sm transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/10 mt-2"
               >
-                {isSavingCategory ? (
-                  <div className="h-4 w-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                {isSavingContestant ? (
+                  <div className="h-5 w-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
                 ) : (
-                  "Create Category"
+                  "✓ Save Contestant"
                 )}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
 
+      {/* ── SIMPLE POP-UP MODAL: ADD CATEGORY ────────────────────────── */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-[#121212] border border-[#262626] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+              <div>
+                <h3 className="text-base font-bold text-[#fafafa]">Add New Category</h3>
+                <p className="text-xs text-[#a1a1aa]">e.g. Best Dressed Male, Face of Campus</p>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -1290,100 +929,47 @@ export default function VotingEngine() {
                   setCategoryNameInput('');
                   setCategoryError('');
                 }}
-                className="w-full text-center text-xs text-[#737373] hover:text-[#fafafa] transition cursor-pointer"
-              >
-                Cancel
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── SELECT CATEGORY MODAL FOR CONTESTANT ADDITION ────────────────── */}
-      {isSelectCategoryModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-3xl bg-[#121212] border border-[#262626] p-6 shadow-2xl space-y-5">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#262626] pb-3">
-              <div>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-[#9ca3af] bg-[#171717] border border-[#262626] px-2.5 py-1 rounded-full">
-                  Category Router
-                </span>
-                <h3 className="text-base font-bold text-[#fafafa] mt-2">Select Candidate Category</h3>
-              </div>
-              <button
-                onClick={() => setIsSelectCategoryModalOpen(false)}
-                className="h-8 w-8 rounded-full border border-[#262626] bg-[#171717] flex items-center justify-center text-[#9ca3af] hover:text-[#fafafa] transition cursor-pointer"
+                className="h-8 w-8 rounded-full border border-[#2e2e2e] bg-[#18181b] flex items-center justify-center text-[#a1a1aa] hover:text-[#fafafa] transition"
               >
                 ✕
               </button>
             </div>
 
-            {categories.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-xs text-[#9ca3af]">
-                  Select a category below to register a contestant:
-                </p>
-                
-                {/* Categories selection grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
-                  {categories.map((cat) => {
-                    const contestantCount = cat.contestants?.length || 0;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          setContestantForm((prev) => ({ ...prev, category: cat.name }));
-                          setIsSelectCategoryModalOpen(false);
-                          setIsDrawerOpen(true);
-                        }}
-                        className="p-4 rounded-xl border border-[#262626] hover:border-[#374151] bg-[#171717] hover:bg-[#202020] text-left transition active:scale-98 cursor-pointer flex flex-col justify-between h-24"
-                      >
-                        <span className="text-xs font-bold text-[#fafafa] line-clamp-2">
-                          {cat.name}
-                        </span>
-                        <div className="flex items-center gap-1.5 text-[10px] text-[#737373]">
-                          <span>👥</span> {contestantCount} {contestantCount === 1 ? 'Candidate' : 'Candidates'}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-6 space-y-4">
-                <div className="w-12 h-12 bg-[#171717] border border-[#262626] rounded-full flex items-center justify-center text-xl mx-auto">
-                  ⚠️
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-[#fafafa]">No Categories Found</p>
-                  <p className="text-xs text-[#9ca3af] max-w-sm mx-auto">
-                    Create at least one category to start registering contestants.
-                  </p>
-                </div>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSelectCategoryModalOpen(false);
-                    setIsCategoryModalOpen(true);
-                  }}
-                  className="rounded-full bg-[#fafafa] text-[#0a0a0a] hover:bg-white px-5 py-2 text-xs font-semibold transition active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <span>+</span> Add Category
-                </button>
+            {categoryError && (
+              <div className="bg-rose-950/50 border border-rose-800/40 text-rose-400 p-3 rounded-2xl text-xs font-semibold">
+                ⚠️ {categoryError}
               </div>
             )}
-            
-            <div className="text-center text-[10px] font-mono text-[#737373] border-t border-[#262626] pt-3">
-              Swyft Creator Studio
-            </div>
+
+            <form onSubmit={handleSaveCategory} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#fafafa] mb-1.5">Category Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Best Dressed Male"
+                  value={categoryNameInput}
+                  onChange={(e) => setCategoryNameInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#18181b] border border-[#2e2e2e] rounded-xl text-sm font-semibold text-[#fafafa] outline-none focus:border-emerald-500 transition placeholder-[#71717a]"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingCategory}
+                className="w-full h-11 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#09090b] font-black text-xs transition disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-500/10"
+              >
+                {isSavingCategory ? (
+                  <div className="h-4 w-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                ) : (
+                  "✓ Create Category"
+                )}
+              </button>
+            </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }

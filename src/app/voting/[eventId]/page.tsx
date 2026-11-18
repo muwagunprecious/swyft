@@ -84,21 +84,21 @@ export default function EventVotingPage() {
     }
   }, [eventId]);
 
-  // Handle click on Vote button
-  const handleVoteClick = (categoryId: string, contestantId: string) => {
-    setPendingVote({ categoryId, contestantId });
+  // Selected Candidate for single-step Vote Modal
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
 
-    if (!voterDetails) {
-      // If name/email not set, trigger detail popup form
-      setShowVoterModal(true);
-    } else {
-      // Voter is identified. If event is paid voting, open paid widget. Else cast free vote.
-      if (event.isVotingPaid) {
-        setShowPaymentModal(true);
-      } else {
-        castFreeVote(voterDetails.name, voterDetails.email, categoryId, contestantId);
-      }
-    }
+  // Handle click on Vote button
+  const handleVoteClick = (category: any, contestant: any) => {
+    setSelectedCandidate({
+      categoryId: category.id,
+      categoryName: category.name,
+      contestantId: contestant.id,
+      contestantName: contestant.name,
+      contestantImage: contestant.image,
+    });
+    setPendingVote({ categoryId: category.id, contestantId: contestant.id });
+    setIsVoteModalOpen(true);
   };
 
   // Save voter details and proceed
@@ -251,146 +251,154 @@ export default function EventVotingPage() {
         </div>
       )}
 
-      {/* VOTER INFORMATION MODAL FORM */}
-      {showVoterModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="w-full max-w-sm rounded-3xl bg-white border border-gray-100 p-6 shadow-2xl space-y-6">
-            <div className="text-center space-y-2">
-              <span className="text-3xl">🗳️</span>
-              <h3 className="text-lg font-black text-gray-900">Enter Voter Details</h3>
-              <p className="text-xs font-semibold text-gray-400">
-                Provide your details to cast votes. Emails are verified against duplicate voting in free campaigns.
-              </p>
-            </div>
+      {/* ── UNIFIED SIMPLE VOTE POP-UP MODAL ──────────────────────── */}
+      {isVoteModalOpen && selectedCandidate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-gray-100 p-6 sm:p-7 shadow-2xl space-y-5">
             
-            <form onSubmit={handleVoterDetailsSubmit} className="space-y-4">
-              <div className="space-y-1 text-left">
-                <label className="text-[10px] font-black uppercase text-gray-400">Full Name</label>
+            {/* Candidate Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedCandidate.contestantImage || '/images/party.png'}
+                  alt={selectedCandidate.contestantName}
+                  className="w-14 h-14 rounded-2xl object-cover border border-gray-200 shadow-sm shrink-0"
+                />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#f05537] bg-orange-50 px-2 py-0.5 rounded">
+                    {selectedCandidate.categoryName}
+                  </span>
+                  <h3 className="text-base font-black text-gray-900 truncate mt-0.5">
+                    Vote for {selectedCandidate.contestantName}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {event.isVotingPaid ? `${formatNaira(event.voteCost || 100)} per vote` : 'Free Voting'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVoteModalOpen(false)}
+                className="h-8 w-8 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-700 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* If Paid Voting: Quantity Chips & Stepper */}
+            {event.isVotingPaid && (
+              <div className="space-y-3 p-4 bg-orange-50/60 border border-orange-100 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-700">Number of Votes</span>
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setPaidVoteQty(Math.max(1, paidVoteQty - 1))}
+                      disabled={paidVoteQty <= 1}
+                      className="h-7 w-7 rounded-lg border border-gray-200 bg-gray-50 text-xs font-bold text-gray-600 hover:bg-gray-100 flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                    <span className="min-w-[28px] text-center text-xs font-black text-gray-900">{paidVoteQty}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPaidVoteQty(paidVoteQty + 1)}
+                      className="h-7 w-7 rounded-lg border border-gray-200 bg-gray-50 text-xs font-bold text-gray-600 hover:bg-gray-100 flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[1, 5, 10, 20, 50].map((qty) => (
+                    <button
+                      key={qty}
+                      type="button"
+                      onClick={() => setPaidVoteQty(qty)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                        paidVoteQty === qty
+                          ? 'bg-[#1e0a3c] text-white border-[#1e0a3c]'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {qty} {qty === 1 ? 'vote' : 'votes'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Total Cost Display */}
+                <div className="flex items-center justify-between pt-2 border-t border-orange-200/60 font-black">
+                  <span className="text-xs text-gray-600">Total To Pay</span>
+                  <span className="text-base text-[#f05537]">
+                    {formatNaira(total)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Voter Details Form */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Your Full Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Precious Ademuwagun"
+                  placeholder="e.g. Teniola Adeyemi"
                   value={voterNameInput}
                   onChange={(e) => setVoterNameInput(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 focus:border-[#f05537] px-4 py-3 text-xs font-semibold text-gray-800 outline-none transition"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:border-[#1e0a3c] transition"
                   required
                 />
               </div>
-              <div className="space-y-1 text-left">
-                <label className="text-[10px] font-black uppercase text-gray-400">Email Address</label>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Your Email Address *</label>
                 <input
                   type="email"
-                  placeholder="e.g. ademuwagun@gmail.com"
+                  placeholder="e.g. teniola@gmail.com"
                   value={voterEmailInput}
                   onChange={(e) => setVoterEmailInput(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 focus:border-[#f05537] px-4 py-3 text-xs font-semibold text-gray-800 outline-none transition"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 outline-none focus:border-[#1e0a3c] transition"
                   required
                 />
               </div>
-              <button
-                type="submit"
-                disabled={isSubmittingVote}
-                className="w-full h-11 rounded-xl bg-[#f05537] hover:bg-[#d1410c] text-xs font-black uppercase text-white transition shadow disabled:opacity-50"
-              >
-                Save & Continue
-              </button>
+            </div>
+
+            {/* Big Action Button */}
+            <div className="pt-2">
               <button
                 type="button"
-                onClick={() => { setShowVoterModal(false); setPendingVote(null); }}
-                className="w-full text-center text-[10px] font-bold text-gray-405 hover:underline mt-2"
-              >
-                Cancel
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SIMULATED PAID VOTE CHECKOUT WIDGET */}
-      {showPaymentModal && pendingVote && voterDetails && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="w-full max-w-sm rounded-3xl bg-white border border-gray-100 p-6 shadow-2xl space-y-6">
-            <div className="text-center space-y-2">
-              <span className="text-3xl">💳</span>
-              <h3 className="text-lg font-black text-gray-900">Cast Paid Votes</h3>
-              <p className="text-xs font-semibold text-gray-400">
-                This campaign requires paid verification. Cast counts are unlimited for paid votes.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs space-y-3 font-semibold text-slate-600">
-              <div className="flex justify-between">
-                <span>Voter Name</span>
-                <span className="font-bold text-slate-800">{voterDetails.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Voter Email</span>
-                <span className="font-bold text-slate-800">{voterDetails.email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Cost Per Vote</span>
-                <span className="font-bold text-slate-800">{formatNaira(event.voteCost || 50)}</span>
-              </div>
-            </div>
-
-            {/* Quantity Selector */}
-            <div className="flex items-center justify-between border-t border-b border-gray-100 py-3">
-              <span className="text-xs font-black uppercase text-gray-400">Vote Quantity</span>
-              <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setPaidVoteQty(Math.max(1, paidVoteQty - 1))}
-                  disabled={paidVoteQty <= 1}
-                  className="h-7 w-7 rounded border border-gray-200 bg-white text-xs font-bold text-gray-500"
-                >
-                  -
-                </button>
-                <span className="min-w-[20px] text-center text-xs font-black text-gray-800">{paidVoteQty}</span>
-                <button
-                  onClick={() => setPaidVoteQty(paidVoteQty + 1)}
-                  className="h-7 w-7 rounded border border-gray-200 bg-white text-xs font-bold text-gray-500"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Total price calculation */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-                <span>Subtotal</span>
-                <span>{formatNaira(subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-                <span>Platform Service Fee (4%)</span>
-                <span>{formatNaira(platformFee)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-                <span>Paystack Payment Fee (1.5%)</span>
-                <span>{formatNaira(paystackFee)}</span>
-              </div>
-              <div className="flex items-center justify-between font-black text-gray-900 text-sm border-t border-gray-100 pt-2">
-                <span>Grand Total</span>
-                <span className="text-[#f05537]">
-                  {formatNaira(total)}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <button
-                onClick={handleCastPaidVotes}
                 disabled={isSubmittingVote}
-                className="w-full h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-black uppercase text-slate-950 transition shadow-md shadow-emerald-500/10 active:scale-95 disabled:opacity-50"
+                onClick={async () => {
+                  if (!voterNameInput.trim() || !voterEmailInput.trim()) {
+                    triggerToast("Please enter your name and email.", "error");
+                    return;
+                  }
+                  const voter = { name: voterNameInput.trim(), email: voterEmailInput.trim() };
+                  setVoterDetails(voter);
+                  localStorage.setItem("swyft_voter", JSON.stringify(voter));
+
+                  if (event.isVotingPaid) {
+                    // Trigger Paystack
+                    handleCastPaidVotes();
+                  } else {
+                    // Free vote
+                    await castFreeVote(voter.name, voter.email, selectedCandidate.categoryId, selectedCandidate.contestantId);
+                    setIsVoteModalOpen(false);
+                  }
+                }}
+                className="w-full h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-sm uppercase transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
               >
-                Pay & Cast {paidVoteQty} Vote{paidVoteQty > 1 ? "s" : ""}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowPaymentModal(false); setPendingVote(null); }}
-                className="w-full text-center text-[10px] font-bold text-gray-400 hover:underline pt-1"
-              >
-                Cancel
+                {isSubmittingVote ? (
+                  <div className="h-5 w-5 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin"></div>
+                ) : event.isVotingPaid ? (
+                  `💳 Pay ${formatNaira(total)} & Cast ${paidVoteQty} Vote${paidVoteQty > 1 ? 's' : ''}`
+                ) : (
+                  "✓ Cast 1 Free Vote"
+                )}
               </button>
             </div>
+
           </div>
         </div>
       )}
@@ -672,7 +680,7 @@ export default function EventVotingPage() {
                                 <button
                                   onClick={() => {
                                     if (event.isVotingEnabled) {
-                                      handleVoteClick(activeCategory.id, contestant.id);
+                                      handleVoteClick(activeCategory, contestant);
                                     }
                                   }}
                                   disabled={!event.isVotingEnabled}
